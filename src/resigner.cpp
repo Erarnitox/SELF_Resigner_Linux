@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <iostream>
 #include <filesystem>
-#include <vector>
+#include <string>
 
 namespace fs = std::filesystem;
 
@@ -20,13 +20,19 @@ static inline const std::basic_string<char> compressmsg{ "[ON]" };
 void mainmenu();
 
 static inline void cls(){
-    std::cout<< u8"\033[2J\033[1;1H";
+    std::cout<< u8"\033[2J\033[1;1H"; // clear screen
+    std::cout<< u8"\033[1;32m"; // make the output green
 }
 
 auto main() -> int {
     for(;;){
         mainmenu();
     }
+}
+
+static inline void wait_input(){
+    while ((getchar()) != '\n'); // clear cin buffer
+    std::cin.get();
 }
 
 void createFolder() {
@@ -38,8 +44,8 @@ void decself() {
     if(!fs::exists("EBOOT.BIN")) {
         std::cout << "[^^!] EBOOT.BIN cannot be found.\n"
                   << "[^^!] Decrypt aborted.\n"
-                  << "[*] Press any key to continue...\n";
-                  getchar();
+                  << "[*] Press [ENTER] to continue...\n";
+                  wait_input();
                   return;
     }
 
@@ -52,8 +58,8 @@ void decself() {
     } else {
         std::cout << "[^^!] Decrypt EBOOT.BIN failed.\n";
     }
-    std::cout << "[*] Press any key to continue...\n";
-    getchar();
+    std::cout << "[*] Press [ENTER] to continue...\n";
+    wait_input();
     return;
 }
 
@@ -63,8 +69,8 @@ void disccex() {
         if(!fs::exists("EBOOT.ELF")) {
             std::cout << "[^^!] EBOOT.BIN/ELF cannot be found.\n"
                       << "[^^!] Resign aborted.\n"
-                      << "[*] Press any key to continue...\n";
-            getchar();
+                      << "[*] Press [ENTER] to continue...\n";
+            wait_input();
             return;
         }
     }
@@ -78,8 +84,8 @@ void disccex() {
     if(!fs::exists("EBOOT.ELF")) {
         std::cout << "[^^!] Decrypt EBOOT.BIN failed.\n"
                   << "[^^!] Resign aborted.\n"
-                  << "[*] Press any key to continue...\n";
-        getchar();
+                  << "[*] Press [ENTER] to continue...\n";
+        wait_input();
         return;
     }
 
@@ -111,8 +117,8 @@ void disccex() {
 
     if (autoresign) fs::remove("EBOOT.ELF");
     std::cout << "[*] Resign finished.\n"
-              << "[*] Press any key to continue...\n";
-    getchar();
+              << "[*] Press [ENTER] to continue...\n";
+    wait_input();
     return;
 }
 
@@ -187,8 +193,8 @@ void mainmenu() {
     }
 
     std::cout << "Invalid input, please enter among (1-11/O/D/C/I/G/T)." << std::endl;
-    std::cout << "[*] Press any key to continue..." << std::endl;
-    getchar();
+    std::cout << "[*] Press [ENTER] to continue..." << std::endl;
+    
     return;
 }
 
