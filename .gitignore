@@ -1,4 +1,5 @@
 bin
+build
 res
 .cache
 .vscode
