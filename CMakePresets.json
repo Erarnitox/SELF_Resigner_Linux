@@ -1,0 +1,36 @@
+{
+    "cmakeMinimumRequired" : {
+        "major" : 3,
+        "minor" : 20,
+        "patch" : 0
+    },
+    "version" : 3,
+    "configurePresets" : [
+      {
+        "name" : "debug",
+        "displayName" : "Debug - (Linux) Ninja and GCC",
+        "description" : "Erarnitox's recommended settings for a debug build. Uses clang and Ninja",
+        "generator" : "Ninja",
+        "binaryDir" : "${sourceDir}/debug",
+        "cacheVariables" : {
+            "CMAKE_EXPORT_COMPILE_COMMANDS" : true,
+            "CMAKE_BUILD_TYPE" : "Debug",
+            "CMAKE_INSTALL_PREFIX" : "${sourceDir}/debug",
+            "CMAKE_CXX_COMPILER": "g++"
+        }
+      },
+      {
+        "name" : "release",
+        "displayName" : "Release - (Linux) Ninja and GCC",
+        "description" : "Erarnitox's recommended settings for a release build. Uses clang and Ninja",
+        "generator" : "Ninja",
+        "binaryDir" : "${sourceDir}/release",
+        "cacheVariables" : {
+            "CMAKE_EXPORT_COMPILE_COMMANDS" : false,
+            "CMAKE_BUILD_TYPE" : "Release",
+            "CMAKE_INSTALL_PREFIX" : "${sourceDir}/release",
+            "CMAKE_CXX_COMPILER": "g++"
+        }
+      }
+    ]
+  }
