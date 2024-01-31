@@ -5,17 +5,17 @@
 
 namespace fs = std::filesystem;
 
-static inline const std::basic_string<char> selfctrlflags{ "4000000000000000000000000000000000000000000000000000000000000002" };
-static inline const std::basic_string<char> selfcapflags{ "00000000000000000000000000000000000000000000003B0000000100040000" };
-static inline const std::basic_string<char> output{ "4xxstd" };
-static inline const std::basic_string<char> outputmsg{ "4.XX STD" };
-static inline const std::basic_string<char> elfsdk{ "41" };
-static inline const std::basic_string<char> keyrev{ "1C" };
-static inline const std::basic_string<char> fwver{ "0004002000000000" };
-static inline const std::basic_string<char> ctrlflagswitch{ "FALSE" };
-static inline const std::basic_string<char> capflagswitch{ "FALSE" };
-static inline const std::basic_string<char> compress{ "TRUE" };
-static inline const std::basic_string<char> compressmsg{ "[ON]" };
+static std::basic_string<char> selfctrlflags{ "4000000000000000000000000000000000000000000000000000000000000002" };
+static std::basic_string<char> selfcapflags{ "00000000000000000000000000000000000000000000003B0000000100040000" };
+static std::basic_string<char> output{ "4xxstd" };
+static std::basic_string<char> outputmsg{ "4.XX STD" };
+static std::basic_string<char> elfsdk{ "41" };
+static std::basic_string<char> keyrev{ "1C" };
+static std::basic_string<char> fwver{ "0004002000000000" };
+static std::basic_string<char> ctrlflagswitch{ "FALSE" };
+static std::basic_string<char> capflagswitch{ "FALSE" };
+static std::basic_string<char> compress{ "TRUE" };
+static std::basic_string<char> compressmsg{ "[ON]" };
 
 void mainmenu();
 
