@@ -1,21 +1,21 @@
 #include <cstdio>
 #include <iostream>
 #include <filesystem>
-#include <iomanip>
+#include <vector>
 
 namespace fs = std::filesystem;
 
-char selfctrlflags[]{ "4000000000000000000000000000000000000000000000000000000000000002" };
-char selfcapflags[]{ "00000000000000000000000000000000000000000000003B0000000100040000" };
-char output[]{ "4xxstd" };
-char outputmsg[][5]{ "4.XX", "STD" };
-char elfsdk[]{ "41" };
-char keyrev[]{ "1C" };
-char fwver[]{ "0004002000000000" };
-bool ctrlflagswitch{ false };
-bool capflagswitch{ false };
-bool compress{ true };
-char compressmsg[]{ "[ON]" };
+static inline const std::basic_string<char> selfctrlflags{ "4000000000000000000000000000000000000000000000000000000000000002" };
+static inline const std::basic_string<char> selfcapflags{ "00000000000000000000000000000000000000000000003B0000000100040000" };
+static inline const std::basic_string<char> output{ "4xxstd" };
+static inline const std::basic_string<char> outputmsg{ "4.XX STD" };
+static inline const std::basic_string<char> elfsdk{ "41" };
+static inline const std::basic_string<char> keyrev{ "1C" };
+static inline const std::basic_string<char> fwver{ "0004002000000000" };
+static inline const std::basic_string<char> ctrlflagswitch{ "FALSE" };
+static inline const std::basic_string<char> capflagswitch{ "FALSE" };
+static inline const std::basic_string<char> compress{ "TRUE" };
+static inline const std::basic_string<char> compressmsg{ "[ON]" };
 
 void mainmenu();
 
@@ -93,18 +93,18 @@ void disccex() {
     //system("./tool/FixELF EBOOT.ELF 41");
 
     std::cout << "[*] Encrypting EBOOT.ELF...\n";
-    if(capflagswitch) {
+    if(capflagswitch == "TRUE") {
         system("./tool/scetool -v --sce-type=SELF --compress-data=TRUE --skip-sections=TRUE --key-revision=1C --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=0004002000000000 --self-cap-flags=00000000000000000000000000000000000000000000003B0000000100040000 --encrypt EBOOT.ELF EBOOT.BIN");
     }
 
-    if(!capflagswitch) {
-        if(!ctrlflagswitch) {
+    if(capflagswitch == "FALSE") {
+        if(ctrlflagswitch == "FALSE") {
             system("./tool/scetool -v --sce-type=SELF --compress-data=TRUE --skip-sections=TRUE --key-revision=1C --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=0004002000000000 --encrypt EBOOT.ELF EBOOT.BIN");
         }
     }
 
-    if (!capflagswitch) {
-        if (ctrlflagswitch) {
+    if (capflagswitch == "FALSE") {
+        if (ctrlflagswitch == "TRUE") {
             system("./tool/scetool -v --sce-type=SELF --compress-data=TRUE --skip-sections=TRUE --key-revision=1C --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=0004002000000000 --self-ctrl-flags=4000000000000000000000000000000000000000000000000000000000000002 --encrypt EBOOT.ELF EBOOT.BIN");
         }
     }
@@ -118,10 +118,10 @@ void disccex() {
 
 void mainmenu() {
     cls();
-    if(fs::exists("tool/selfinfo.txt")) fs::remove("tool/selfinfo.txt");
-    if(fs::exists("tool/selflist.txt")) fs::remove("tool/selflist.txt");
-    if(fs::exists("tool/bruteforce.txt")) fs::remove("tool/bruteforce.txt");
-    if(fs::exists("tool/resultlen.txt")) fs::remove("tool/resultlen.txt");
+    if(fs::exists("tool/selfinfo.txt"))     fs::remove("tool/selfinfo.txt"  );
+    if(fs::exists("tool/selflist.txt"))     fs::remove("tool/selflist.txt"  );
+    if(fs::exists("tool/bruteforce.txt"))   fs::remove("tool/bruteforce.txt");
+    if(fs::exists("tool/resultlen.txt"))    fs::remove("tool/resultlen.txt" );
     
     std::cout << " =============================================================================== \n"
               << "^|                       TrueAncestor SELF Resigner (Linux)                    ^|\n"
@@ -141,8 +141,8 @@ void mainmenu() {
               << " =============================================================================== \n"
               << "^|           SWITCH (CEX CFW)           ^|              INFORMATION            ^|\n"
               << " =============================================================================== \n"
-              << "^| O. Output Method: %outputmsg%         ^| C. Credits                         ^|\n"
-              << "^| D. Compress Data: %compressmsg%      ^| I. Instructions                     ^|\n"
+              << "^| O. Output Method: 4.XX STD           ^| C. Credits                          ^|\n"
+              << "^| D. Compress Data: [ON]               ^| I. Instructions                     ^|\n"
               << "^|                                      ^| G. Get Series Tools                 ^|\n"
               << "^|                                      ^| T. About TrueAncestor               ^|\n"
               << " =============================================================================== \n"
