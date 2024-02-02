@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <string>
 
+#include "tool/FixELF.hpp"
+
 namespace fs = std::filesystem;
 
 static std::basic_string<char> selfctrlflags{ "4000000000000000000000000000000000000000000000000000000000000002" };
@@ -95,9 +97,8 @@ void disccex() {
     }
 
     std::cout << "[*] Patching EBOOT.ELF...\n";
-    //TODO: tool\FixELF EBOOT.ELF %elfsdk%
-    //system("./tool/FixELF EBOOT.ELF 41");
-
+    fix_elf("EBOOT.ELF", elfsdk);
+   
     std::cout << "[*] Encrypting EBOOT.ELF...\n";
     if(capflagswitch == "TRUE") {
         system("./tool/scetool -v --sce-type=SELF --compress-data=TRUE --skip-sections=TRUE --key-revision=1C --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=0004002000000000 --self-cap-flags=00000000000000000000000000000000000000000000003B0000000100040000 --encrypt EBOOT.ELF EBOOT.BIN");
@@ -124,6 +125,8 @@ void disccex() {
 
 void mainmenu() {
     cls();
+    createFolder();
+    
     if(fs::exists("tool/selfinfo.txt"))     fs::remove("tool/selfinfo.txt"  );
     if(fs::exists("tool/selflist.txt"))     fs::remove("tool/selflist.txt"  );
     if(fs::exists("tool/bruteforce.txt"))   fs::remove("tool/bruteforce.txt");
@@ -145,12 +148,12 @@ void mainmenu() {
               << "^| 7. Custom Sign to NON-DRM SELF/SPRX  ^|                                     ^|\n"
               << "^| 8. Custom Sign to NPDRM SELF/SPRX    ^|                                     ^|\n"
               << " =============================================================================== \n"
-              << "^|           SWITCH (CEX CFW)           ^|              INFORMATION            ^|\n"
+              << "^|                               SWITCH (CEX CFW)                              ^|\n"
               << " =============================================================================== \n"
-              << "^| O. Output Method: 4.XX STD           ^| C. Credits                          ^|\n"
-              << "^| D. Compress Data: [ON]               ^| I. Instructions                     ^|\n"
-              << "^|                                      ^| G. Get Series Tools                 ^|\n"
-              << "^|                                      ^| T. About TrueAncestor               ^|\n"
+              << "^| O. Output Method: 4.XX STD                                                  ^|\n"
+              << "^| D. Compress Data: [ON]                                                      ^|\n"
+              << "^|                                                                             ^|\n"
+              << "^|                                                                             ^|\n"
               << " =============================================================================== \n"
               << "^| Note: Place EBOOT.BIN/ELF into Resigner folder before operation.            ^|\n"
               << "^|       Place SELF/SPRX files into self folder before operation.              ^|\n"
@@ -1161,97 +1164,4 @@ set compress=FALSE
 set compressmsg=[OFF]        
 goto mainmenu
 
-:credits
-cls
-echo ===============================================================================
-echo ^|                         TrueAncestor SELF Resigner                          ^|
-echo ^|                                  by JjKkYu                                  ^|
-echo ^|                                Verision 1.96                                ^|
-echo ===============================================================================
-echo ^|                                  Credits                                    ^|
-echo ===============================================================================
-echo ^| naehrwert for scetool                                                       ^|
-echo ^| MAGiC333X for KLicence Brute-force Tool                                     ^|
-echo ^| Ftsm for FixELF.exe                                                         ^|
-echo ^| $ony for PlayStation3 SDK Tools                                             ^|
-echo ===============================================================================
-echo ^|                              Special Thanks                                 ^|
-echo ===============================================================================
-echo ^| badzbb,Dupecheck,lzniori,yyhioriyagami,haz367,elpaso666,liujun0792          ^|
-echo ===============================================================================
-pause>nul
-goto mainmenu
-
-:ins
-cls
-echo ===============================================================================
-echo ^|                         TrueAncestor SELF Resigner                          ^|
-echo ===============================================================================
-echo ^|                                Instructions                                 ^|
-echo ===============================================================================
-echo ^| 1. What does this tool do?                                                  ^|
-echo ^| This tool resigns SELF files to work for all CEX CFW/DEX OFW usage.         ^|
-echo ^| Be sure to resign all the EBOOT.BIN, SELF/SPRX files in the game.           ^|
-echo ^| If the game gives black screen or freeze, SELF files may need special fix.  ^|
-echo ===============================================================================
-echo ^| 2. Resign priority                                                          ^|
-echo ^| If EBOOT.ELF exists, it will be resigned in priority and remained.          ^|
-echo ^| If EBOOT.ELF doesn't exist, EBOOT.BIN will be resigned, ends without ELF.   ^|
-echo ===============================================================================
-echo ^| 3. Output Method Switch                                                     ^|
-echo ^| This switch will change the output method along with the circle below.      ^|
-echo ^| 4.XX STD - 4.XX ALT - 4.XX ODE - 3.XX STD - 3.XX ALT - 4.XX STD.            ^|
-echo ===============================================================================
-echo ^| 4. Compress Data Switch                                                     ^|
-echo ^| Turn on this switch will allow to generate files in small size.             ^|
-echo ===============================================================================
-pause>nul
-goto mainmenu
-
-:getTools
-cls
-echo ===============================================================================
-echo ^|                         TrueAncestor SELF Resigner                          ^|
-echo ^|                                  by JjKkYu                                  ^|
-echo ^|                                Verision 1.96                                ^|
-echo ===============================================================================
-echo ^|                              Get Series Tools                               ^|
-echo ===============================================================================
-echo ^| 1. TrueAncestor SELF Resigner                                               ^|
-echo ^| This tool is used to resign self files.                                     ^|
-echo ^| 2. TrueAncestor PKG Creator                                                 ^|
-echo ^| This tool is used to create pkg files.                                      ^|
-echo ^| 3. TrueAncestor EDAT Rebuilder                                              ^|
-echo ^| This tool is used to rebuild edat ^& sdat files.                             ^|
-echo ^| 4. TrueAncestor BACKUP Injector                                             ^|
-echo ^| This tool is used to injector files into backup.                            ^|
-echo ===============================================================================
-echo ^| You can get all the series tools at:                                        ^|
-echo ^| http://www.mediafire.com/?jn0fq4ebjd2m                                      ^|
-echo ===============================================================================
-pause>nul
-goto mainMenu
-
-:aboutta
-cls
-echo ===============================================================================
-echo ^|                         TrueAncestor SELF Resigner                          ^|
-echo ^|                                  by JjKkYu                                  ^|
-echo ^|                                Verision 1.96                                ^|
-echo ===============================================================================
-echo ^|                             About TrueAncestor                              ^|
-echo ===============================================================================
-echo ^| True Ancestor is one kind of vampire which is born as a vampire.            ^|
-echo ^| This means True Ancestor have pure vampire blood.                           ^|
-echo ^| True Ancestor don't need consuming blood to survive nor being nocturnal.    ^|
-echo ^| This word is from Tsukihime, a Japanese dojin visual novel by Type-Moon.    ^|
-echo ^| Arcueid Brunestud, the main heroine, is the princess of True Ancestor.      ^|
-echo ^| If you want to learn more about True Ancestor or Tsukihime, please see:     ^|
-echo ^| http://en.wikipedia.org/wiki/Tsukihime                                      ^|
-echo ===============================================================================
-pause>nul
-goto mainmenu
-
-:exit
-exit
 */

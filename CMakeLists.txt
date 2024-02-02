@@ -83,6 +83,14 @@ add_library(frontend OBJECT
     src/tool/scetool_source/frontend.cpp
 )
 
+add_library(fix_elf STATIC
+    src/tool/FixELF.cpp
+)
+
+target_link_libraries(resigner PRIVATE
+    fix_elf
+)
+
 add_executable(scetool
     src/tool/scetool_source/main.cpp
 )
