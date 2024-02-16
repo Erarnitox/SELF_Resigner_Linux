@@ -4,10 +4,11 @@
 * This file is released under the GPLv2.
 */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <ctime>
 
 #include "types.h"
 #include "util.h"
@@ -38,7 +39,7 @@ void _print_sce_header(FILE *fp, sce_header_t *h)
 		fprintf(fp, " Key Revision    0x%04X\n", h->key_revision);
 	
 	name = _get_name(_sce_header_types, h->header_type);
-	if(name != NULL)
+	if(name != nullptr)
 		fprintf(fp, " Header Type     [%s]\n", name);
 	else
 		fprintf(fp, " Header Type     0x%04X\n", h->header_type);
@@ -109,16 +110,16 @@ void _print_sce_file_keys(FILE *fp, sce_buffer_ctxt_t *ctxt)
 	}
 }
 
-static sce_buffer_ctxt_t *_sce_create_ctxt()
+static auto _sce_create_ctxt() -> sce_buffer_ctxt_t *
 {
 	sce_buffer_ctxt_t *res;
 
-	if((res = (sce_buffer_ctxt_t *)malloc(sizeof(sce_buffer_ctxt_t))) == NULL)
-		return NULL;
+	if((res = (sce_buffer_ctxt_t *)malloc(sizeof(sce_buffer_ctxt_t))) == nullptr)
+		return nullptr;
 
 	memset(res, 0, sizeof(sce_buffer_ctxt_t));
 
-	res->scebuffer = NULL;
+	res->scebuffer = nullptr;
 	res->mdec = TRUE;
 
 	//Allocate SCE header.
@@ -137,17 +138,17 @@ static sce_buffer_ctxt_t *_sce_create_ctxt()
 	//Allocate signature.
 	res->sig = (signature_t *)malloc(sizeof(signature_t));
 
-	res->makeself = NULL;
+	res->makeself = nullptr;
 
 	return res;
 }
 
-sce_buffer_ctxt_t *sce_create_ctxt_from_buffer(u8 *scebuffer)
+auto sce_create_ctxt_from_buffer(u8 *scebuffer) -> sce_buffer_ctxt_t *
 {
 	sce_buffer_ctxt_t *res;
 
-	if((res = (sce_buffer_ctxt_t *)malloc(sizeof(sce_buffer_ctxt_t))) == NULL)
-		return NULL;
+	if((res = (sce_buffer_ctxt_t *)malloc(sizeof(sce_buffer_ctxt_t))) == nullptr)
+		return nullptr;
 
 	memset(res, 0, sizeof(sce_buffer_ctxt_t));
 
@@ -175,13 +176,13 @@ sce_buffer_ctxt_t *sce_create_ctxt_from_buffer(u8 *scebuffer)
 			res->self.si = (section_info_t *)(res->scebuffer + res->self.selfh->section_info_offset);
 
 			//SCE version.
-			if(res->self.selfh->sce_version_offset != NULL)
+			if(res->self.selfh->sce_version_offset != 0)
 			{
 				res->self.sv = (sce_version_t *)(res->scebuffer + res->self.selfh->sce_version_offset);
 				_es_sce_version(res->self.sv);
 			}
 			else
-				res->self.sv = 0;
+				res->self.sv = nullptr;
 
 			//Get pointers to all control infos.
 			u32 len = (u32)res->self.selfh->control_info_size;
@@ -192,7 +193,7 @@ sce_buffer_ctxt_t *sce_create_ctxt_from_buffer(u8 *scebuffer)
 
 				while(len > 0)
 				{
-					control_info_t *tci = (control_info_t *)ptr;
+					auto *tci = (control_info_t *)ptr;
 					_es_control_info(tci);
 					ptr += tci->size;
 					len -= tci->size;
@@ -200,7 +201,7 @@ sce_buffer_ctxt_t *sce_create_ctxt_from_buffer(u8 *scebuffer)
 				}
 			}
 			else
-				res->self.cis = NULL;
+				res->self.cis = nullptr;
 		}
 		break;
 	case SCE_HEADER_TYPE_RVK:
@@ -214,7 +215,7 @@ sce_buffer_ctxt_t *sce_create_ctxt_from_buffer(u8 *scebuffer)
 		break;
 	default:
 		free(res);
-		return NULL;
+		return nullptr;
 		break;
 	}
 
@@ -226,12 +227,12 @@ sce_buffer_ctxt_t *sce_create_ctxt_from_buffer(u8 *scebuffer)
 	return res;
 }
 
-sce_buffer_ctxt_t *sce_create_ctxt_build_self(u8 *elf, u32 elf_len)
+auto sce_create_ctxt_build_self(u8 *elf, u32 elf_len) -> sce_buffer_ctxt_t *
 {
 	sce_buffer_ctxt_t *res;
 
-	if((res = _sce_create_ctxt()) == NULL)
-		return NULL;
+	if((res = _sce_create_ctxt()) == nullptr)
+		return nullptr;
 
 	res->sceh->magic = SCE_HEADER_MAGIC;
 	res->sceh->version = SCE_HEADER_VERSION_2;
@@ -266,7 +267,7 @@ sce_buffer_ctxt_t *sce_create_ctxt_build_self(u8 *elf, u32 elf_len)
 
 void sce_add_data_section(sce_buffer_ctxt_t *ctxt, void *buffer, u32 size, BOOL may_compr)
 {
-	sce_section_ctxt_t *sctxt = (sce_section_ctxt_t *)malloc(sizeof(sce_section_ctxt_t));
+	auto *sctxt = (sce_section_ctxt_t *)malloc(sizeof(sce_section_ctxt_t));
 	sctxt->buffer = buffer;
 	sctxt->size = size;
 	sctxt->may_compr = may_compr;
@@ -289,7 +290,7 @@ void sce_compress_data(sce_buffer_ctxt_t *ctxt)
 
 	LIST_FOREACH(iter, ctxt->secs)
 	{
-		sce_section_ctxt_t *sec = (sce_section_ctxt_t *)iter->value;
+		auto *sec = (sce_section_ctxt_t *)iter->value;
 		
 		//Check if the section may be compressed.
 		if(sec->may_compr == TRUE)
@@ -320,7 +321,7 @@ void sce_compress_data(sce_buffer_ctxt_t *ctxt)
 				else
 				{
 					free(buf);
-					_LOG_VERBOSE("Skipped compression of section %03d (0x%08X >= 0x%08X)\n", i, size_comp, sec->size);
+					_LOG_VERBOSE("Skipped compression of section %03d (0x%08lX >= 0x%08X)\n", i, size_comp, sec->size);
 				}
 			}
 			else
@@ -331,7 +332,7 @@ void sce_compress_data(sce_buffer_ctxt_t *ctxt)
 	}
 }
 
-static u32 _sce_get_ci_len(sce_buffer_ctxt_t *ctxt)
+static auto _sce_get_ci_len(sce_buffer_ctxt_t *ctxt) -> u32
 {
 	u32 res = 0;
 
@@ -341,7 +342,7 @@ static u32 _sce_get_ci_len(sce_buffer_ctxt_t *ctxt)
 	return res;
 }
 
-static u32 _sce_get_oh_len(sce_buffer_ctxt_t *ctxt)
+static auto _sce_get_oh_len(sce_buffer_ctxt_t *ctxt) -> u32
 {
 	u32 res = 0;
 
@@ -363,7 +364,7 @@ void _sce_fixup_ctxt(sce_buffer_ctxt_t *ctxt)
 		last_off = base_off;
 
 		//Section offsets.
-		sce_section_ctxt_t *sec = (sce_section_ctxt_t *)iter->value;
+		auto *sec = (sce_section_ctxt_t *)iter->value;
 		sec->offset = base_off;
 
 		//Section infos for SELF (that are present as data sections).
@@ -409,7 +410,7 @@ void _sce_fixup_ctxt(sce_buffer_ctxt_t *ctxt)
 			ctxt->self.selfh->control_info_size = _sce_get_ci_len(ctxt);
 
 			//Set section headers offset in SELF header (last data section) if available.
-			if(ctxt->makeself->shdrs != NULL)
+			if(ctxt->makeself->shdrs != nullptr)
 				ctxt->self.selfh->shdr_offset = last_off;
 			else
 				ctxt->self.selfh->shdr_offset = 0;
@@ -597,7 +598,7 @@ static void _sce_build_header(sce_buffer_ctxt_t *ctxt)
 			u32 ci_base = ctxt->off_self.off_cis;
 			LIST_FOREACH(iter, ctxt->self.cis)
 			{
-				control_info_t *ci = (control_info_t *)iter->value;
+				auto *ci = (control_info_t *)iter->value;
 
 				//Copy control info header.
 				_copy_es_control_info((control_info_t *)(ctxt->scebuffer + ci_base), ci);
@@ -640,7 +641,7 @@ static void _sce_build_header(sce_buffer_ctxt_t *ctxt)
 		u32 oh_base = ctxt->off_self.off_ohs;
 		LIST_FOREACH(iter, ctxt->self.ohs)
 		{
-			opt_header_t *oh = (opt_header_t *)iter->value;
+			auto *oh = (opt_header_t *)iter->value;
 
 			//Copy optional header.
 			_copy_es_opt_header((opt_header_t *)(ctxt->scebuffer + oh_base), oh);
@@ -652,12 +653,12 @@ static void _sce_build_header(sce_buffer_ctxt_t *ctxt)
 	}
 }
 
-static BOOL _sce_sign_header(sce_buffer_ctxt_t *ctxt, keyset_t *ks)
+static auto _sce_sign_header(sce_buffer_ctxt_t *ctxt, keyset_t *ks) -> BOOL
 {
 	u8 hash[0x14];
 
 	//Well...
-	if(ks->priv == NULL || ks->pub == NULL)
+	if(ks->priv == nullptr || ks->pub == nullptr)
 		return FALSE;
 
 	//Generate header hash.
@@ -681,7 +682,7 @@ static void _sce_calculate_hashes(sce_buffer_ctxt_t *ctxt)
 
 	LIST_FOREACH(iter, ctxt->secs)
 	{
-		sce_section_ctxt_t *sec = (sce_section_ctxt_t *)iter->value;
+		auto *sec = (sce_section_ctxt_t *)iter->value;
 
 		sha1_idx = ctxt->metash[i].sha1_index;
 		memset(ctxt->keys + sha1_idx * 0x10, 0, 0x20);
@@ -691,7 +692,7 @@ static void _sce_calculate_hashes(sce_buffer_ctxt_t *ctxt)
 	}
 }
 
-static BOOL _sce_encrypt_header(sce_buffer_ctxt_t *ctxt, u8 *keyset)
+static auto _sce_encrypt_header(sce_buffer_ctxt_t *ctxt, u8 *keyset) -> BOOL
 {
 	u8 *ptr;
 	size_t nc_off;
@@ -700,10 +701,10 @@ static BOOL _sce_encrypt_header(sce_buffer_ctxt_t *ctxt, u8 *keyset)
 	aes_context aes_ctxt;
 
 	//Check if a keyset is provided.
-	if(keyset == NULL)
+	if(keyset == nullptr)
 	{
 		//Try to find keyset.
-		if((ks = keyset_find(ctxt)) == NULL)
+		if((ks = keyset_find(ctxt)) == nullptr)
 			return FALSE;
 	}
 	else
@@ -750,7 +751,7 @@ static void _sce_encrypt_data(sce_buffer_ctxt_t *ctxt)
 
 	LIST_FOREACH(iter, ctxt->secs)
 	{
-		sce_section_ctxt_t *sec = (sce_section_ctxt_t *)iter->value;
+		auto *sec = (sce_section_ctxt_t *)iter->value;
 
 		size_t nc_off = 0;
 		u8 buf[16];
@@ -767,7 +768,7 @@ static void _sce_encrypt_data(sce_buffer_ctxt_t *ctxt)
 	}
 }
 
-BOOL sce_encrypt_ctxt(sce_buffer_ctxt_t *ctxt, u8 *keyset)
+auto sce_encrypt_ctxt(sce_buffer_ctxt_t *ctxt, u8 *keyset) -> BOOL
 {
 	//Build SCE file header.
 	_sce_build_header(ctxt);
@@ -782,11 +783,11 @@ BOOL sce_encrypt_ctxt(sce_buffer_ctxt_t *ctxt, u8 *keyset)
 	return TRUE;
 }
 
-BOOL sce_write_ctxt(sce_buffer_ctxt_t *ctxt, s8 *fname)
+auto sce_write_ctxt(sce_buffer_ctxt_t *ctxt, s8 *fname) -> BOOL
 {
 	FILE *fp;
 
-	if((fp = fopen(fname, "wb")) == NULL)
+	if((fp = fopen(fname, "wb")) == nullptr)
 		return FALSE;
 
 	//Write SCE file header.
@@ -795,7 +796,7 @@ BOOL sce_write_ctxt(sce_buffer_ctxt_t *ctxt, s8 *fname)
 	//Write SCE file sections.
 	LIST_FOREACH(iter, ctxt->secs)
 	{
-		sce_section_ctxt_t *sec = (sce_section_ctxt_t *)iter->value;
+		auto *sec = (sce_section_ctxt_t *)iter->value;
 		fseek(fp, sec->offset, SEEK_SET);
 		fwrite(sec->buffer, sizeof(u8), sec->size, fp);
 	}
@@ -805,7 +806,7 @@ BOOL sce_write_ctxt(sce_buffer_ctxt_t *ctxt, s8 *fname)
 	return TRUE;
 }
 
-BOOL sce_decrypt_header(sce_buffer_ctxt_t *ctxt, u8 *metadata_info, u8 *keyset)
+auto sce_decrypt_header(sce_buffer_ctxt_t *ctxt, u8 *metadata_info, u8 *keyset) -> BOOL
 {
 	u32 i;
 	size_t nc_off;
@@ -814,13 +815,13 @@ BOOL sce_decrypt_header(sce_buffer_ctxt_t *ctxt, u8 *metadata_info, u8 *keyset)
 	aes_context aes_ctxt;
 
 	//Check if provided metadata info should be used.
-	if(metadata_info == NULL)
+	if(metadata_info == nullptr)
 	{
 		//Check if a keyset is provided.
-		if(keyset == NULL)
+		if(keyset == nullptr)
 		{
 			//Try to find keyset.
-			if((ks = keyset_find(ctxt)) == NULL)
+			if((ks = keyset_find(ctxt)) == nullptr)
 				return FALSE;
 
 			_LOG_VERBOSE("Using keyset [%s 0x%04X %s]\n", ks->name, ks->key_revision, sce_version_to_str(ks->version));
@@ -874,7 +875,7 @@ BOOL sce_decrypt_header(sce_buffer_ctxt_t *ctxt, u8 *metadata_info, u8 *keyset)
 	{
 		//Get pointers to all optional headers.
 		ctxt->self.ohs = list_create();
-		opt_header_t *oh = (opt_header_t *)(ctxt->keys + ctxt->metah->key_count * 0x10);
+		auto *oh = (opt_header_t *)(ctxt->keys + ctxt->metah->key_count * 0x10);
 		_es_opt_header(oh);
 		list_add_back(ctxt->self.ohs, oh);
 		while(oh->next != 0)
@@ -893,7 +894,7 @@ BOOL sce_decrypt_header(sce_buffer_ctxt_t *ctxt, u8 *metadata_info, u8 *keyset)
 	return TRUE;
 }
 
-BOOL sce_decrypt_data(sce_buffer_ctxt_t *ctxt)
+auto sce_decrypt_data(sce_buffer_ctxt_t *ctxt) -> BOOL
 {
 	u32 i;
 	aes_context aes_ctxt;
@@ -948,21 +949,21 @@ void sce_print_info(FILE *fp, sce_buffer_ctxt_t *ctxt)
 }
 
 static s8 _sce_tmp_vstr[16];
-s8 *sce_version_to_str(u64 version)
+auto sce_version_to_str(u64 version) -> s8 *
 {
 	u32 v = version >> 32;
 	sprintf(_sce_tmp_vstr, "%02X.%02X", (v & 0xFFFF0000) >> 16, v & 0x0000FFFF);
 	return _sce_tmp_vstr;
 }
 
-u64 sce_str_to_version(s8 *version)
+auto sce_str_to_version(s8 *version) -> u64
 {
 	u16 h, l;
-	sscanf(version, "%02X.%02X", &h, &l);
+	sscanf(version, "%2hX.%2hX", &h, &l);
 	return ((u64)(h << 16 | l)) << 32;
 }
 
-u64 sce_hexver_to_decver(u64 version)
+auto sce_hexver_to_decver(u64 version) -> u64
 {
 	//TODO: hackity hack.
 	s8 tmp[16];
@@ -976,26 +977,26 @@ u64 sce_hexver_to_decver(u64 version)
 	return res;
 }
 
-control_info_t *sce_get_ctrl_info(sce_buffer_ctxt_t *ctxt, u32 type)
+auto sce_get_ctrl_info(sce_buffer_ctxt_t *ctxt, u32 type) -> control_info_t *
 {
 	LIST_FOREACH(iter, ctxt->self.cis)
 	{
-		control_info_t *ci = (control_info_t *)iter->value;
+		auto *ci = (control_info_t *)iter->value;
 		if(ci->type == type)
 			return ci;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
-opt_header_t *sce_get_opt_header(sce_buffer_ctxt_t *ctxt, u32 type)
+auto sce_get_opt_header(sce_buffer_ctxt_t *ctxt, u32 type) -> opt_header_t *
 {
 	LIST_FOREACH(iter, ctxt->self.ohs)
 	{
-		opt_header_t *oh = (opt_header_t *)iter->value;
+		auto *oh = (opt_header_t *)iter->value;
 		if(oh->type == type)
 			return oh;
 	}
 
-	return NULL;
+	return nullptr;
 }
