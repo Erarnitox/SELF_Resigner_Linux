@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.25)
 
 project(ps3_tools)
 
+set(CXX_STANDARD 20)
+
 add_executable(resigner
    src/resigner.cpp
 )

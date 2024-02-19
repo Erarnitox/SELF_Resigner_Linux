@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <string>
-#include <string_view>
+#include <format>
 
 #include "tool/FixELF.hpp"
 
@@ -10,7 +10,7 @@ namespace fs = std::filesystem;
 static std::basic_string<char> selfctrlflags{ "4000000000000000000000000000000000000000000000000000000000000002" };
 static std::basic_string<char> selfcapflags{ "00000000000000000000000000000000000000000000003B0000000100040000" };
 static std::basic_string<char> output{ "4xxstd" };
-static std::basic_string<char> outputmsg{ "4.XX STD" };
+static std::basic_string<char> outputmsg{ "[4.XX STD]" };
 static std::basic_string<char> elfsdk{ "41" };
 static std::basic_string<char> keyrev{ "1C" };
 static std::basic_string<char> fwver{ "0004002000000000" };
@@ -348,11 +348,19 @@ void encrypt() {
     if(contentid.substr(7,1) == "B") {
         npapptype="UEXEC";
     }
-    if(ctrlflagswitch=="FALSE") (
-        tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=%npapptype% --np-real-fname=EBOOT.BIN --encrypt EBOOT.ELF EBOOT.BIN
-    )
+    if(ctrlflagswitch=="FALSE") {
+        auto command{ std::format(
+            "./tool/scetool -v --sce-type=SELF --compress-data={} --skip-sections=TRUE "
+            "--key-revision={} --self-auth-id=1010000001000003 --self-add-shdrs=TRUE "
+            "--self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 "
+            "--self-fw-version={} --np-license-type=FREE --np-content-id={} --np-app-type={} "
+            "--np-real-fname=EBOOT.BIN --encrypt EBOOT.ELF EBOOT.BIN",
+            compress, keyrev, fwver, contentid, npapptype
+        )};
+        system(command);
+    }
     if(ctrlflagswitch=="TRUE") {
-        tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=%npapptype% --np-real-fname=EBOOT.BIN --encrypt EBOOT.ELF EBOOT.BIN
+        ./tool/scetool -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=%npapptype% --np-real-fname=EBOOT.BIN --encrypt EBOOT.ELF EBOOT.BIN
     }
     if(autoresign=="TRUE") {
         fs::remove("EBOOT.ELF");
@@ -363,295 +371,303 @@ void encrypt() {
 }
 
 void decsprx() {
-    cd self
-    if exist ..\tool\selflist.txt (
-        del ..\tool\selflist.txt
-    )
-    if exist *.self (
-        dir *.self /b >..\tool\selflist.txt
-    )
-    if exist *.sprx (
-        dir *.sprx /b >>..\tool\selflist.txt
-    )
-    cd..
-    set /a count=0
-    cls
-    echo ===============================================================================
-    echo  SELF/SPRX Files List
-    echo ===============================================================================
-    if exist tool\selflist.txt (
-        for /f %%f in (tool\selflist.txt) do (
-            set /a count+=1
-            set a!count!=%%f
-            if count NEQ 0 (
-                echo  !count!. %%f 
-            )
+    // in the self directory
+    if(fs::exists("./tool/selflist.txt")) {
+        fs::remove("./tool/selflist.txt");
+    }
+    system("ls self | grep .self > ./tool/selflist.txt");
+    system("ls self | grep .sprx > ./tool/selflist.txt");
+    
+    int count{ 0 };
+    cls();
+
+    std::puts("===============================================================================");
+    std::puts("SELF/SPRX Files List");
+    std::puts("===============================================================================");
+    if(fs::exists("./tool/selflist.txt")) {
+        for /f %%f in (./tool/selflist.txt) do (
+            count+=1;
+            if(count != 0) {
+                std::puts(" !count!. %%f ");
+            }
         )
-    ) else (
-        echo  No SELF/SPRX is Found.
-    )
-    echo ===============================================================================
-    if !count!==0 (
-        pause>nul
-        goto mainmenu
-    )
-    echo  Note: To decrypt NPDRM file, EBOOT.BIN might be needed in Resigner folder.
-    echo ===============================================================================
+     } else {
+        std::puts("No SELF/SPRX is Found.");
+     }
+    std::puts("===============================================================================");
+    if(count==0) {
+        wait_input();
+        return;
+    }
+    std::puts("Note: To decrypt NPDRM file, EBOOT.BIN might be needed in Resigner folder.");
+    std::puts("===============================================================================");
 }
 
 void decsel() {
-    set selfsel=NONE
+    selfsel="NONE";
     set /p selfsel=[?] Enter SELF/SPRX file number to decrypt / B to Back:
     if %selfsel%==NONE (
-        goto decsprx
+        decsprx();
     )
     if %selfsel%==B (
-        goto mainmenu
+        return;
     )
     if %selfsel%==b (
-        goto mainmenu
+        return;
     )
     if %selfsel% GTR !count! (
-        echo [^^!] Invalid input, please enter again.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto decsprx
+        std::puts("[^^!] Invalid input, please enter again.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        decsprx();
     )
     if %selfsel% LSS 1 (
-        echo [^^!] Invalid input, please enter again.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto decsprx
+        std::puts("[^^!] Invalid input, please enter again.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        decsprx();
     )
     set selfname=!a%selfsel%!
     set shortname=%selfname:~0,-5%
     set sufname=%selfname:~-4,4%
     if %sufname%==self (
-        set elfsuffix=elf
+        elfsuffix="elf";
     )
     if %sufname%==SELF (
-        set elfsuffix=ELF
+        elfsuffix="ELF";
     )
     if %sufname%==sprx (
-        set elfsuffix=prx
+        elfsuffix="prx";
     )
     if %sufname%==SPRX (
-        set elfsuffix=PRX
+        elfsuffix="PRX";
     )
-    if exist self\%shortname%.%elfsuffix% (del self\%shortname%.%elfsuffix%)
-    echo [*] Decrypting %selfname%...
-    tool\scetool.exe --decrypt self\%selfname% self\%shortname%.%elfsuffix%>nul
-    if not exist self\%shortname%.%elfsuffix% (
-        goto chkcontentid
+    if(fs::exists("self\%shortname%.%elfsuffix%"){ 
+        fs::remove("self\%shortname%.%elfsuffix%");
+    }
+    std::puts("[*] Decrypting %selfname%...");
+    ./tool/scetool --decrypt self\%selfname% self\%shortname%.%elfsuffix%>nul
+    if(!fs::exists("self\%shortname%.%elfsuffix% ")) {
+        chkcontentid();
     )
-    echo [*] Decrypt file to %shortname%.%elfsuffix% successfully.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto decsprx
+    std::puts("[*] Decrypt file to %shortname%.%elfsuffix% successfully.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
+    decsprx();
 }
 
 
 void chkcontentid() {
-    set contentid=NONE
-    tool\scetool.exe -i self\%selfname%>tool\selfinfo.txt
-    for /f "skip=3 tokens=1,*" %%i in (tool\selfinfo.txt) do if "%%i"=="ContentID" set contentid=%%j
+    contentid="NONE";
+    ./tool/scetool.exe -i self\%selfname%>./tool/selfinfo.txt
+    for /f "skip=3 tokens=1,*" %%i in (./tool/selfinfo.txt) do if "%%i"=="ContentID" set contentid=%%j
     if %contentid%==NONE (
-        echo [^^!] Decrypt %selfname% failed.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto decsprx
+        std::puts("[^^!] Decrypt %selfname% failed.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        decsprx();
     )
-    echo [*] Found ContentID in %sufname% file: %contentid%
+    std::puts("[*] Found ContentID in %sufname% file: %contentid%");
 }
 
 
 void chklist() {
-    if not exist tool\kliclist.txt (goto chkpool)
-    set klicensee=NONE
+    if(!fs::exists("./tool/kliclist.txt")) {
+        chkpool();
+    }
+    klicensee="NONE";
     for /f "tokens=1,*" %%i in (tool\kliclist.txt) do if "%%i"=="%contentid%" set klicensee=%%j
     for /l %%a in (0 1 99) do if not "!klicensee:~%%a,1!"=="" set /a kliclen=%%a+1
     if %kliclen% NEQ 32 (
-        goto chkpool
+        chkpool();
     ) else (
-        echo [*] Found Klicensee in Klic List: %klicensee%
-        goto decklic
+        std::puts("[*] Found Klicensee in Klic List: %klicensee%");
+        decklic();
     )
 }
 
 
 void chkpool() {
-    if not exist tool\klicpool.txt (
-        goto chkeboot
-    )
+    if(!fs::exists("./tool/klicpool.txt")) {
+        chkeboot();
+    }
     tool\klicencebruteforce -x self\%selfname% tool\klicpool.txt data\keys>tool\bruteforce.txt
     for /f "skip=3 tokens=1,*" %%i in (tool\bruteforce.txt) do if "%%i"=="[*]" set bruteforceresult=%%j
     if %bruteforceresult:~4,2%==no (
-        goto chkeboot
+        chkeboot();
     )
     set klicensee=%bruteforceresult:~24,32%
     tool\Rtlen %bruteforceresult%>tool\resultlen.txt
     set /p resultlen=<tool\resultlen.txt
     if %resultlen%==43 set klicensee=%bruteforceresult:~11,32%
-    echo [*] Found Klicensee in Klic Pool: %klicensee%
-    echo %contentid% %klicensee%>>tool\kliclist.txt
-    goto decklic
+    std::puts("[*] Found Klicensee in Klic Pool: %klicensee%");
+    std::puts("%contentid% %klicensee%>>tool\kliclist.txt");
+    decklic();
 }
 
 
 void chkeboot() {
-    if not exist EBOOT.BIN (
-        echo [*] EBOOT.BIN cannot be found in Resigner folder.
-        echo [^^!] Decrypt %selfname% failed.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto decsprx
-    )
-    if exist EBOOT.ELF (
-        del EBOOT.ELF
-    )
-    tool\scetool.exe --decrypt EBOOT.BIN EBOOT.ELF>nul
-    if not exist EBOOT.ELF (
-        echo [^^!] Decrypt EBOOT.BIN failed.
-        echo [^^!] Decrypt %selfname% failed.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto decsprx
-    )
-    echo [*] Start BruteForce Detecting Klicensee, please wait...
-    tool\klicencebruteforce -x self\%selfname% EBOOT.ELF data\keys>tool\bruteforce.txt
-    if exist EBOOT.ELF (
-        del EBOOT.ELF
-    )
+    if(!fs::exists("EBOOT.BIN ")) {
+        std::puts("[*] EBOOT.BIN cannot be found in Resigner folder.");
+        std::puts("[^^!] Decrypt %selfname% failed.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        decsprx();
+    }
+    if(fs::exists("EBOOT.ELF ")) {
+        fs::remove("EBOOT.ELF");
+    }
+    system("./tool/scetool --decrypt EBOOT.BIN EBOOT.ELF");
+    if(!fs::exists("EBOOT.ELF ")) {
+        std::puts("[^^!] Decrypt EBOOT.BIN failed.");
+        std::puts("[^^!] Decrypt %selfname% failed.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        decsprx();
+    }
+    std::puts("[*] Start BruteForce Detecting Klicensee, please wait...");
+    system("./tool/klicencebruteforce -x self\%selfname% EBOOT.ELF data\keys>tool\bruteforce.txt");
+    if(fs::exists("EBOOT.ELF ")) {
+        fs::remove("EBOOT.ELF");
+    }
     for /f "skip=3 tokens=1,*" %%i in (tool\bruteforce.txt) do if "%%i"=="[*]" set bruteforceresult=%%j
     if %bruteforceresult:~4,2%==no (
-        echo [^^!] Cannot find Klicensee, BruteForce Detecting failed.
-        echo [^^!] Decrypt %selfname% failed.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto decsprx
+        std::puts("[^^!] Cannot find Klicensee, BruteForce Detecting failed.");
+        std::puts("[^^!] Decrypt %selfname% failed.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        decsprx();
     ) else (
-        goto foundkliceboot
+        foundkliceboot();
     )
 }
 
 
 void foundkliceboot() {
     set klicensee=%bruteforceresult:~24,32%
-    tool\Rtlen %bruteforceresult%>tool\resultlen.txt
-    set /p resultlen=<tool\resultlen.txt
+    ./tool/Rtlen %bruteforceresult%>./tool/resultlen.txt
+    set /p resultlen=<./tool/resultlen.txt
     if %resultlen%==43 set klicensee=%bruteforceresult:~11,32%
-    echo [*] Found Klicensee in EBOOT.BIN: %klicensee%
-    echo %klicensee%>>tool\klicpool.txt
-    echo %contentid% %klicensee%>>tool\kliclist.txt
+    std::puts("[*] Found Klicensee in EBOOT.BIN: %klicensee%");
+    std::puts("%klicensee%>>./tool/klicpool.txt");
+    std::puts("%contentid% %klicensee%>>./tool/kliclist.txt");
 }
 
 
 void decklic() {
-    tool\scetool.exe --np-klicensee %klicensee% --decrypt self\%selfname% self\%shortname%.%elfsuffix%>nul
-    if not exist self\%shortname%.%elfsuffix% (
-        echo [^^!] Decrypt !selfname%count%! failed.
-        echo [*] Press any key to continue...
-        pause>nul
+    ./tool/scetool.exe --np-klicensee %klicensee% --decrypt self\%selfname% self\%shortname%.%elfsuffix%>nul
+    if(!fs::exists("self\%shortname%.%elfsuffix% ")) {
+        std::puts("[^^!] Decrypt !selfname%count%! failed.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
     )
-    echo [*] Decrypt file to %shortname%.%elfsuffix% successfully.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto decsprx
+    std::puts("[*] Decrypt file to %shortname%.%elfsuffix% successfully.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
+    decsprx();
 }
 
 
 void selfcex() {
-    cd self
-    if exist ..\tool\selflist.txt (
-        del ..\tool\selflist.txt
-    )
-    if exist *.self (
-        dir *.self /b >..\tool\selflist.txt
-    )
-    if exist *.sprx (
-        dir *.sprx /b >>..\tool\selflist.txt
-    )
-    cd..
-    set /a count=0
-    cls
-    echo ===============================================================================
-    echo  SELF/SPRX Files List
-    echo ===============================================================================
-    if exist tool\selflist.txt (
-        for /f %%f in (tool\selflist.txt) do (
+    if(fs::exists("./tool/selflist.txt ")) {
+        fs::remove("./tool/selflist.txt");
+    }
+    if(fs::exists("*.self ")) {
+        dir *.self /b >./tool/selflist.txt
+    }
+    if(fs::exists("*.sprx ")) {
+        dir *.sprx /b >>./tool/selflist.txt
+    }
+    int count{ 0 };
+    cls();
+    std::puts("===============================================================================");
+    std::puts(" SELF/SPRX Files List");
+    std::puts("===============================================================================");
+    if(fs::exists("./tool/selflist.txt ")) {
+        for /f %%f in ("./tool/selflist.txt") do (
             set /a count+=1
             set a!count!=%%f
-            if count NEQ 0 (echo  !count!. %%f )
+            if count NEQ 0 (std::puts(" !count!. %%f )");
         )
     ) else (
-        echo  No SELF/SPRX is Found.
+        std::puts(" No SELF/SPRX is Found.");
     )
-    echo ===============================================================================
+    std::puts("===============================================================================");
     if !count!==0 (
-        pause>nul
-        goto mainmenu
+        wait_input();
+        return;
     )
 }
 
 
 void selfsel() {
-    set selfsel=NONE
+    selfsel="NONE";
     set /p selfsel=[?] Enter SELF/SPRX file number to resign / A for All / B to Back:
-    if %selfsel%==NONE (goto selfcex)
-    if %selfsel%==A (goto selfall)
-    if %selfsel%==a (goto selfall)
-    if %selfsel%==B (goto mainmenu)
-    if %selfsel%==b (goto mainmenu)
+    if %selfsel%==NONE (
+        selfcex();
+    )
+    if %selfsel%==A (
+        selfall();
+    )
+    if %selfsel%==a (
+        selfall();
+    )
+    if %selfsel%==B (
+        mainmenu();
+    )
+    if %selfsel%==b (
+        mainmenu();
+    )
     if %selfsel% GTR !count! (
-        echo [^^!] Invalid input, please enter again.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto selfsel
+        std::puts("[^^!] Invalid input, please enter again.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        selfsel();
     )
     if %selfsel% LSS 1 (
-        echo [^^!] Invalid input, please enter again.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto selfsel
+        std::puts("[^^!] Invalid input, please enter again.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        selfsel();
     )
     set selfname=!a%selfsel%!
     set shortname=%selfname:~0,-5%
     set sufname=%selfname:~-4,4%
     if %sufname%==self (
-        set elfsuffix=elf
-        set baksuffix=bak
+        elfsuffix="elf";
+        baksuffix="bak";
     )
     if %sufname%==SELF (
-        set elfsuffix=ELF
-        set baksuffix=BAK
+        elfsuffix="ELF";
+        baksuffix="BAK";
     )
     if %sufname%==sprx (
-        set elfsuffix=prx
-        set baksuffix=bak
+        elfsuffix="prx";
+        baksuffix="bak";
     )
     if %sufname%==SPRX (
-        set elfsuffix=PRX
-        set baksuffix=BAK
+        elfsuffix="PRX";
+        baksuffix="BAK";
     )
-    if exist self\%shortname%.%elfsuffix% (
-        del self\%shortname%.%elfsuffix%
-    )
-    echo [*] Decrypting %selfname%...
-    tool\scetool.exe --decrypt self\%selfname% self\%shortname%.%elfsuffix%>nul
-    if not exist self\%shortname%.%elfsuffix% (
-        echo [^^!] Decrypt %selfname% failed.
-        echo [^^!] Resign aborted.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto selfcex
-    )
-    if exist self\%selfname%.%baksuffix% (
-        del self\%selfname%.%baksuffix%
-    )
+    if(fs::exists("self\%shortname%.%elfsuffix% ")) {
+        fs::remove("self\%shortname%.%elfsuffix%");
+    }
+    std::puts("[*] Decrypting %selfname%...");
+    ./tool/scetool --decrypt self\%selfname% self\%shortname%.%elfsuffix%>nul
+    if(!fs::exists("self\%shortname%.%elfsuffix% ")) {
+        std::puts("[^^!] Decrypt %selfname% failed.");
+        std::puts("[^^!] Resign aborted.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        selfcex();
+    }
+    if(fs::exists("self\%selfname%.%baksuffix% ")) {
+        fs::remove("self\%selfname%.%baksuffix%");
+    }
     copy self\%selfname% self\%selfname%.%baksuffix%>nul
-    echo [*] Patching %shortname%.%elfsuffix%...
-    tool\FixELF self\%shortname%.%elfsuffix% %elfsdk%
-    echo [*] Encrypting %shortname%.%elfsuffix%...
+    std::puts("[*] Patching %shortname%.%elfsuffix%...");
+    fix_elf(self\%shortname%.%elfsuffix%, %elfsdk%);
+    std::puts("[*] Encrypting %shortname%.%elfsuffix%...");
     if %capflagswitch%==TRUE (
         tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-cap-flags=%selfcapflags% --encrypt self\%shortname%.%elfsuffix% self\%selfname%>nul
     )
@@ -665,56 +681,56 @@ void selfsel() {
             tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --encrypt self\%shortname%.%elfsuffix% self\%selfname%>nul
         )
     )
-    if exist self\%shortname%.%elfsuffix% (
-        del self\%shortname%.%elfsuffix%
-    )
-    echo [*] Resign finished.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto selfcex
+    if(fs::exists("self\%shortname%.%elfsuffix% ")) {
+        fs::remove("self\%shortname%.%elfsuffix%");
+    }
+    std::puts("[*] Resign finished.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
+    selfcex();
 }
 
 
 void selfall() {
-    set /a count=0
-    set /a error=0
+    int count="0";
+    int error="0";
     for /f %%f in (tool\selflist.txt) do (
-        set /a count+=1
+        count+=1;
         set selfname%count%=%%f
         set shortname%count%=!selfname%count%:~0,-5!
         set sufname%count%=!selfname%count%:~-4,4!
         if !sufname%count%!==self (
-            set elfsuffix%count%=elf
-            set baksuffix%count%=bak
+            elfsuffix[count]="elf";
+            baksuffix[count]="bak";
         )
         if !sufname%count%!==SELF (
-            set elfsuffix%count%=ELF
-            set baksuffix%count%=BAK
+            elfsuffix[count]="ELF";
+            baksuffix[count]="BAK";
         )
         if !sufname%count%!==sprx (
-            set elfsuffix%count%=prx
-            set baksuffix%count%=bak
+            elfsuffix[count]="prx";
+            baksuffix[count]="bak";
         )
         if !sufname%count%!==SPRX (
-            set elfsuffix%count%=PRX
-            set baksuffix%count%=BAK
+            elfsuffix[count]="PRX";
+            baksuffix[count]="BAK";
         )
-        if exist self\!shortname%count%!.!elfsuffix%count%! (
-            del self\!shortname%count%!.!elfsuffix%count%!
+        if(fs::exists("self\!shortname%count%!.!elfsuffix%count%! ")) {
+            fs::remove("self\!shortname%count%!.!elfsuffix%count%!");
         )
-        echo [*] Resigning !selfname%count%!...
-        tool\scetool.exe --decrypt self\!selfname%count%! self\!shortname%count%!.!elfsuffix%count%!>nul
-        if not exist self\!shortname%count%!.!elfsuffix%count%! (
-            echo [^^!] Decrypt !selfname%count%! failed.
-            echo [^^!] Resign !selfname%count%! aborted.
-            set /a error+=1
-        )
-        if exist self\!shortname%count%!.!elfsuffix%count%! (
-            if exist self\!selfname%count%!.!baksuffix%count%! (
-                del self\!selfname%count%!.!baksuffix%count%!
-            )
+        std::puts("[*] Resigning !selfname%count%!...");
+        ./tool/scetool --decrypt self\!selfname%count%! self\!shortname%count%!.!elfsuffix%count%!>nul
+        if(!fs::exists("self\!shortname%count%!.!elfsuffix%count%! ")) {
+            std::puts("[^^!] Decrypt !selfname%count%! failed.");
+            std::puts("[^^!] Resign !selfname%count%! aborted.");
+            error+=1;
+        }
+        if(fs::exists("self\!shortname%count%!.!elfsuffix%count%! ")) {
+            if(fs::exists("self\!selfname%count%!.!baksuffix%count%! ")) {
+                fs::remove("self\!selfname%count%!.!baksuffix%count%!");
+            }
             copy self\!selfname%count%! self\!selfname%count%!.!baksuffix%count%!>nul
-            tool\FixELF self\!shortname%count%!.!elfsuffix%count%! %elfsdk%
+            fix_elf("self\!shortname%count%!.!elfsuffix%count%!", elfsdk);
             if %capflagswitch%==TRUE (
                 tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-cap-flags=%selfcapflags% --encrypt self\!shortname%count%!.!elfsuffix%count%! self\!selfname%count%!>nul
             )
@@ -728,92 +744,100 @@ void selfall() {
                 tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --encrypt self\!shortname%count%!.!elfsuffix%count%! self\!selfname%count%!>nul
             )
             )
-            if exist self\!shortname%count%!.!elfsuffix%count%! (
-                del self\!shortname%count%!.!elfsuffix%count%!
-            )
-            echo [*] Resign !selfname%count%! finished.
-        )
-    )
+            if(fs::exists("self\!shortname%count%!.!elfsuffix%count%! ")) {
+                fs::remove("self\!shortname%count%!.!elfsuffix%count%!");
+            }
+            std::puts("[*] Resign !selfname%count%! finished.");
+        }
+    }
     if %error%==0 (
-        echo [*] Resign all SELF/SPRX files successfully.
+        std::puts("[*] Resign all SELF/SPRX files successfully.");
     ) else (
-        echo [^^!] Resign all SELF/SPRX files finished, %error% file^(s^) failed.
+        std::puts("[^^!] Resign all SELF/SPRX files finished, %error% file^(s^) failed.");
     )
-    echo [*] Press any key to continue...
-    pause>nul
-    goto mainmenu
+    std::puts("[*] Press any key to continue...");
+    wait_input();
 }
 
 
 void kliccex() {
     if %output%==4xxode (
-        echo [^^!] NPDRM Resign is inapplicable for ODE Output.
-        pause>nul
-        goto mainmenu
+        std::puts("[^^!] NPDRM Resign is inapplicable for ODE Output.");
+        wait_input();
+        return;
     )
     cd self
-    if exist ..\tool\selflist.txt (
-        del ..\tool\selflist.txt)
-    if exist *.self (
+    if(fs::exists("..\tool\selflist.txt ")) {
+        fs::remove("..\tool\selflist.txt");
+    }
+    if(fs::exists("*.self ")) {
         dir *.self /b >..\tool\selflist.txt
-    )
-    if exist *.sprx (
+    }
+    if(fs::exists("*.sprx ")) {
         dir *.sprx /b >>..\tool\selflist.txt
-    )
+    }
     cd..
     set /a count=0
     cls
-    echo ===============================================================================
-    echo  SELF/SPRX Files List
-    echo ===============================================================================
-    if exist tool\selflist.txt (
+    std::puts("===============================================================================");
+    std::puts(" SELF/SPRX Files List");
+    std::puts("===============================================================================");
+    if(fs::exists("tool\selflist.txt ")) {
         for /f %%f in (tool\selflist.txt) do (
             set /a count+=1
             set a!count!=%%f
             if count NEQ 0 (
-                echo  !count!. %%f 
+                std::puts(" !count!. %%f ");
             )
         )
-    ) else (echo  No SELF/SPRX is Found.)
-    echo ===============================================================================
+    } else {
+        std::puts(" No SELF/SPRX is Found.");
+    };
+    std::puts("===============================================================================");
     if !count!==0 (
-        pause>nul
-        goto mainmenu
+        wait_input();
+        return;
     )
-    echo  Note: BruteForce Detecting Klicensee method will be used in this option.
-    echo        EBOOT.BIN must be placed into Resigner folder for detecting Klicensee.
-    echo        Make sure that EBOOT.BIN and SELF/SPRX files are from the same game.
-    echo ===============================================================================
+    std::puts(" Note: BruteForce Detecting Klicensee method will be used in this option.");
+    std::puts("       EBOOT.BIN must be placed into Resigner folder for detecting Klicensee.");
+    std::puts("       Make sure that EBOOT.BIN and SELF/SPRX files are from the same game.");
+    std::puts("===============================================================================");
     set klicgo=NONE
     set /p klicgo=[?] Enter any key to continue / B to Back:
-    if %klicgo%==NONE (goto checkeboot)
-    if %klicgo%==B (goto mainmenu)
-    if %klicgo%==b (goto mainmenu)
+    if %klicgo%==NONE (
+        checkeboot();
+    )
+    if %klicgo%==B (
+        return;
+    )
+    if %klicgo%==b (
+        return;
+    )
 }
 
 
 void checkeboot() {
-    if not exist EBOOT.BIN (
-        echo [^^!] EBOOT.BIN cannot be found in Resigner folder.
-        echo [^^!] Resign aborted.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto kliccex
-    )
+    if(!fs::exists("EBOOT.BIN ")) {
+        std::puts("[^^!] EBOOT.BIN cannot be found in Resigner folder.");
+        std::puts("[^^!] Resign aborted.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        kliccex();
+    }
     set contentid=NONE
     tool\scetool.exe -i EBOOT.BIN>tool\selfinfo.txt
     for /f "skip=3 tokens=1,*" %%i in (tool\selfinfo.txt) do if "%%i"=="ContentID" set contentid=%%j
     if %contentid%==NONE (
-        echo [^^!] EBOOT.BIN should be an NPDRM EBOOT.
-        echo [^^!] Resign aborted.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto kliccex
+        std::puts("[^^!] EBOOT.BIN should be an NPDRM EBOOT.");
+        std::puts("[^^!] Resign aborted.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        kliccex();
     )
-    if exist tool\kliclist.txt (
-        goto kliclist
-    )
-    goto klicdec
+    if(fs::exists("tool\kliclist.txt ")) {
+        kliclist();
+    }
+    klicdec();
 }
 
 
@@ -822,17 +846,17 @@ void kliclist() {
     for /f "tokens=1,*" %%i in (tool\kliclist.txt) do if "%%i"=="%contentid%" set klicensee=%%j
     for /l %%a in (0 1 99) do if not "!klicensee:~%%a,1!"=="" set /a kliclen=%%a+1
     if %kliclen% NEQ 32 (
-        goto bruteforcepool
+        bruteforcepool();
     ) else (
-        echo [*] Found ContentID in EBOOT.BIN: %contentid%
-        echo [*] Found Klicensee in Klic List: %klicensee%
-        goto klicresign
+        std::puts("[*] Found ContentID in EBOOT.BIN: %contentid%");
+        std::puts("[*] Found Klicensee in Klic List: %klicensee%");
+        klicresign();
     )
 }
 
 
 void bruteforcepool() {
-    if not exist tool\klicpool.txt (goto klicdec)
+    if(!fs::exists("tool\klicpool.txt (goto klicdec")) {
     set /p usesprx=<tool\selflist.txt
     tool\klicencebruteforce -x self\%usesprx% tool\klicpool.txt data\keys>tool\bruteforce.txt
     for /f "skip=3 tokens=1,*" %%i in (tool\bruteforce.txt) do if "%%i"=="[*]" set bruteforceresult=%%j
@@ -841,41 +865,45 @@ void bruteforcepool() {
     tool\Rtlen %bruteforceresult%>tool\resultlen.txt
     set /p resultlen=<tool\resultlen.txt
     if %resultlen%==43 set klicensee=%bruteforceresult:~11,32%
-    echo [*] Found ContentID in EBOOT.BIN: %contentid%
-    echo [*] Found Klicensee in Klic Pool: %klicensee%
-    echo %contentid% %klicensee%>>tool\kliclist.txt
-    goto klicresign
+    std::puts("[*] Found ContentID in EBOOT.BIN: %contentid%");
+    std::puts("[*] Found Klicensee in Klic Pool: %klicensee%");
+    std::puts("%contentid% %klicensee%>>tool\kliclist.txt");
+    klicresign();
 }
 
 
 void klicdec() {
-    if exist EBOOT.ELF (del EBOOT.ELF)
-    tool\scetool.exe --decrypt EBOOT.BIN EBOOT.ELF>nul
-    if not exist EBOOT.ELF (
-    echo [^^!] Decrypt EBOOT.BIN failed.
-    echo [^^!] Resign aborted.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto kliccex
-    )
+    if(fs::exists("EBOOT.ELF")) {
+        fs::remove("EBOOT.ELF");
+    }
+    system("./tool/scetool.exe --decrypt EBOOT.BIN EBOOT.ELF");
+    if(!fs::exists("EBOOT.ELF ")) {
+        std::puts("[^^!] Decrypt EBOOT.BIN failed.");
+        std::puts("[^^!] Resign aborted.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        kliccex();
+    }
 }
 
 
 void bruteforceeboot() {
-    echo [*] Start BruteForce Detecting Klicensee, please wait...
-    echo [*] Found ContentID in EBOOT.BIN: %contentid%
+    std::puts("[*] Start BruteForce Detecting Klicensee, please wait...");
+    std::puts("[*] Found ContentID in EBOOT.BIN: %contentid%");
     set /p usesprx=<tool\selflist.txt
     tool\klicencebruteforce -x self\%usesprx% EBOOT.ELF data\keys>tool\bruteforce.txt
-    if exist EBOOT.ELF (del EBOOT.ELF)
+    if(fs::exists("EBOOT.ELF ")) {
+        fs::remove("EBOOT.ELF");
+    }
     for /f "skip=3 tokens=1,*" %%i in (tool\bruteforce.txt) do if "%%i"=="[*]" set bruteforceresult=%%j
     if %bruteforceresult:~4,2%==no (
-    echo [^^!] Cannot find Klicensee, BruteForce Detecting failed.
-    echo [^^!] Resign aborted.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto kliccex
+        std::puts("[^^!] Cannot find Klicensee, BruteForce Detecting failed.");
+        std::puts("[^^!] Resign aborted.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        kliccex();
     ) else (
-    goto klicfoundeboot
+        klicfoundeboot();
     )
 }
 
@@ -885,9 +913,9 @@ void klicfoundeboot() {
     tool\Rtlen %bruteforceresult%>tool\resultlen.txt
     set /p resultlen=<tool\resultlen.txt
     if %resultlen%==43 set klicensee=%bruteforceresult:~11,32%
-    echo [*] Found Klicensee in EBOOT.BIN: %klicensee%
-    echo %klicensee%>>tool\klicpool.txt
-    echo %contentid% %klicensee%>>tool\kliclist.txt
+    std::puts("[*] Found Klicensee in EBOOT.BIN: %klicensee%");
+    std::puts("%klicensee%>>tool\klicpool.txt");
+    std::puts("%contentid% %klicensee%>>tool\kliclist.txt");
 }
 
 void klicresign() {
@@ -916,60 +944,70 @@ void klicresign() {
     )
     set npapptype%count%=SPRX
     if %contentid:~7,1%==B (set npapptype%count%=USPRX)
-    if exist self\!shortname%count%!.!elfsuffix%count%! (del self\!shortname%count%!.!elfsuffix%count%!)
-    echo [*] Resigning !selfname%count%!...
+    if(fs::exists("self\!shortname%count%!.!elfsuffix%count%!") { 
+        fs::remove("self\!shortname%count%!.!elfsuffix%count%!");
+    }
+    std::puts("[*] Resigning !selfname%count%!...");
     tool\scetool.exe --np-klicensee %klicensee% --decrypt self\!selfname%count%! self\!shortname%count%!.!elfsuffix%count%!>nul
-    if not exist self\!shortname%count%!.!elfsuffix%count%! (
-    echo [^^!] Decrypt !selfname%count%! failed.
-    echo [^^!] Resign !selfname%count%! aborted.
+    if(!fs::exists("self\!shortname%count%!.!elfsuffix%count%! ")) {
+    std::puts("[^^!] Decrypt !selfname%count%! failed.");
+    std::puts("[^^!] Resign !selfname%count%! aborted.");
     set /a error+=1
     )
-    if exist self\!shortname%count%!.!elfsuffix%count%! (
-    if exist self\!selfname%count%!.!baksuffix%count%! (del self\!selfname%count%!.!baksuffix%count%!)
+    if(fs::exists("self\!shortname%count%!.!elfsuffix%count%! ")) {
+    if(fs::exists("self\!selfname%count%!.!baksuffix%count%!")) {
+        fs::remove("self\!selfname%count%!.!baksuffix%count%!");
+    }
     copy self\!selfname%count%! self\!selfname%count%!.!baksuffix%count%!>nul
-    tool\FixELF self\!shortname%count%!.!elfsuffix%count%! %elfsdk%
+    fix_elf("self\!shortname%count%!.!elfsuffix%count%!", elfsdk);
     if %ctrlflagswitch%==FALSE (
     tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=!npapptype%count%! --np-klicensee=%klicensee% --np-real-fname=!selfname%count%! --encrypt self\!shortname%count%!.!elfsuffix%count%! self\!selfname%count%!>nul
     )
     if %ctrlflagswitch%==TRUE (
     tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=!npapptype%count%! --np-klicensee=%klicensee% --np-real-fname=!selfname%count%! --encrypt self\!shortname%count%!.!elfsuffix%count%! self\!selfname%count%!>nul
     )
-    if exist self\!shortname%count%!.!elfsuffix%count%! (del self\!shortname%count%!.!elfsuffix%count%!)
-    echo [*] Resign !selfname%count%! finished.
+    if(fs::exists("self\!shortname%count%!.!elfsuffix%count%!")){
+        fs::remove("self\!shortname%count%!.!elfsuffix%count%!");
+    }
+    std::puts("[*] Resign !selfname%count%! finished.");
     )
     )
     if %error%==0 (
-    echo [*] Resign all SELF/SPRX files successfully.
+    std::puts("[*] Resign all SELF/SPRX files successfully.");
     ) else (
-    echo [^^!] Resign all SELF/SPRX files finished, %error% file^(s^) failed.
+    std::puts("[^^!] Resign all SELF/SPRX files finished, %error% file^(s^) failed.");
     )
-    echo [*] Press any key to continue...
-    pause>nul
-    goto mainmenu
+    std::puts("[*] Press any key to continue...");
+    wait_input();
 }
 
 void custnondrm() {
     cd self
-    if exist ..\tool\selflist.txt (del ..\tool\selflist.txt)
-    if exist *.elf (dir *.elf /b >..\tool\selflist.txt)
-    if exist *.prx (dir *.prx /b >>..\tool\selflist.txt)
+    if(fs::exists("..\tool\selflist.txt")){
+        fs::remove("..\tool\selflist.txt");
+    }
+    if(fs::exists("*.elf")){
+        dir *.elf /b >..\tool\selflist.txt
+    }
+    if(fs::exists("*.prx")){
+        dir *.prx /b >>..\tool\selflist.txt
+    }
     cd..
     set /a count=0
     cls
-    echo ===============================================================================
-    echo  ELF/PRX Files List
-    echo ===============================================================================
-    if exist tool\selflist.txt (
+    std::puts("===============================================================================");
+    std::puts(" ELF/PRX Files List");
+    std::puts("===============================================================================");
+    if(fs::exists("tool\selflist.txt ")) {
     for /f %%f in (tool\selflist.txt) do (
     set /a count+=1
     set a!count!=%%f
-    if count NEQ 0 (echo  !count!. %%f )
+    if count NEQ 0 (std::puts(" !count!. %%f )");
     )
-    ) else (echo  No ELF/PRX is Found.)
-    echo ===============================================================================
+    ) else (std::puts(" No ELF/PRX is Found.)");
+    std::puts("===============================================================================");
     if !count!==0 (
-    pause>nul
-    goto mainmenu
+        wait_input();
     )
 }
 
@@ -981,16 +1019,16 @@ void elfselnondrm() {
     if %selfsel%==B (goto mainmenu)
     if %selfsel%==b (goto mainmenu)
     if %selfsel% GTR !count! (
-    echo [^^!] Invalid input, please enter again.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto elfselnondrm
+    std::puts("[^^!] Invalid input, please enter again.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
+    elfselnondrm();
     )
     if %selfsel% LSS 1 (
-    echo [^^!] Invalid input, please enter again.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto elfselnondrm
+    std::puts("[^^!] Invalid input, please enter again.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
+    elfselnondrm();
     )
     set elfname=!a%selfsel%!
     set shortname=%elfname:~0,-4%
@@ -1011,10 +1049,12 @@ void elfselnondrm() {
     set selfsuffix=SPRX
     set baksuffix=BAK
     )
-    if exist self\%shortname%.%selfsuffix% (del self\%shortname%.%selfsuffix%)
-    echo [*] Patching %elfname%...
-    tool\FixELF self\%elfname% %elfsdk%
-    echo [*] Encrypting %elfname%...
+    if(fs::exists("self\%shortname%.%selfsuffix%")) {
+        fs::remove("self\%shortname%.%selfsuffix%");
+    }
+    std::puts("[*] Patching %elfname%...");
+    fix_elf("self\%elfname%", elfsdk);
+    std::puts("[*] Encrypting %elfname%...");
     if %capflagswitch%==TRUE (
     tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-cap-flags=%selfcapflags% --encrypt self\%elfname% self\%shortname%.%selfsuffix%>nul
     )
@@ -1028,40 +1068,45 @@ void elfselnondrm() {
     tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --encrypt self\%elfname% self\%shortname%.%selfsuffix%>nul
     )
     )
-    echo [*] Custom sign finished.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto custnondrm
+    std::puts("[*] Custom sign finished.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
+    custnondrm();
 }
 
 
 void custnpdrm() {
     if %output%==4xxode (
-    echo [^^!] NPDRM Resign is inapplicable for ODE Output.
-    pause>nul
-    goto mainmenu
+    std::puts("[^^!] NPDRM Resign is inapplicable for ODE Output.");
+    wait_input();
+    return;
     )
     cd self
-    if exist ..\tool\selflist.txt (del ..\tool\selflist.txt)
-    if exist *.elf (dir *.elf /b >..\tool\selflist.txt)
-    if exist *.prx (dir *.prx /b >>..\tool\selflist.txt)
+    if(fs::exists("./tool/selflist.txt")) {
+        fs::remove("..\tool\selflist.txt");
+    }
+    if(fs::exists("*.elf"){
+        dir *.elf /b >..\tool\selflist.txt
+    }
+    if(fs::exists("*.prx")){
+        dir *.prx /b >>..\tool\selflist.txt
+    }
     cd..
     set /a count=0
     cls
-    echo ===============================================================================
-    echo  ELF/PRX Files List
-    echo ===============================================================================
-    if exist tool\selflist.txt (
+    std::puts("===============================================================================");
+    std::puts(" ELF/PRX Files List");
+    std::puts("===============================================================================");
+    if(fs::exists("tool/selflist.txt ")) {
     for /f %%f in (tool\selflist.txt) do (
     set /a count+=1
     set a!count!=%%f
-    if count NEQ 0 (echo  !count!. %%f )
+    if count NEQ 0 (std::puts(" !count!. %%f )");
     )
-    ) else (echo  No ELF/PRX is Found.)
-    echo ===============================================================================
+    ) else (std::puts(" No ELF/PRX is Found.)");
+    std::puts("===============================================================================");
     if !count!==0 (
-    pause>nul
-    goto mainmenu
+    wait_input();
     )
 }
 
@@ -1069,20 +1114,26 @@ void custnpdrm() {
 void elfselnpdrm() {
     set selfsel=NONE
     set /p selfsel=[?] Enter ELF/PRX file number to resign / B to Back:
-    if %selfsel%==NONE (goto custnpdrm)
-    if %selfsel%==B (goto mainmenu)
-    if %selfsel%==b (goto mainmenu)
+    if %selfsel%==NONE (
+        custnpdrm();
+    )
+    if %selfsel%==B (
+        return;
+    )
+    if %selfsel%==b (
+        return;
+    )
     if %selfsel% GTR !count! (
-    echo [^^!] Invalid input, please enter again.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto elfselnpdrm
+    std::puts("[^^!] Invalid input, please enter again.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
+    elfselnpdrm();
     )
     if %selfsel% LSS 1 (
-    echo [^^!] Invalid input, please enter again.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto elfselnpdrm
+    std::puts("[^^!] Invalid input, please enter again.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
+    elfselnpdrm();
     )
     set elfname=!a%selfsel%!
     set shortname=%elfname:~0,-4%
@@ -1108,264 +1159,263 @@ void elfselnpdrm() {
 
 void customcid() {
     set customcid=NONE
-    echo [*] Please follow this sample ContentID:JP9000-NPJA00001_00-0000000000000000
+    std::puts("[*] Please follow this sample ContentID:JP9000-NPJA00001_00-0000000000000000");
     set /p customcid=[?] Enter custom ContentID / A to Abort:
-    if %customcid%==NONE (goto customcid)
-    if %customcid%==A (goto custnpdrm)
-    if %customcid%==a (goto custnpdrm)
+    if %customcid%==NONE (
+        customcid();
+    )
+    if %customcid%==A (
+        custnpdrm();
+    )
+    if %customcid%==a (
+        custnpdrm();
+    )
     set cidlength=0
     for /l %%a in (0 1 99) do if not "!customcid:~%%a,1!"=="" set /a cidlength=%%a+1
     if %cidlength% NEQ 36 (
-    echo [^^!] Invalid ContentID format, please enter following the sample ContentID.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto customcid
+    std::puts("[^^!] Invalid ContentID format, please enter following the sample ContentID.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
+    customcid();
     )
     if %customcid:~6,1% NEQ - (
-    echo [^^!] Invalid ContentID format, please enter following the sample ContentID.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto customcid
+    std::puts("[^^!] Invalid ContentID format, please enter following the sample ContentID.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
+    customcid();
     )
     if %customcid:~16,4% NEQ _00- (
-    echo [^^!] Invalid ContentID format, please enter following the sample ContentID.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto customcid
+    std::puts("[^^!] Invalid ContentID format, please enter following the sample ContentID.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
+    customcid();
     )
     set contentid=%customcid%
 }
 
 
-void customklic(){
+void customklic() {
     set klicensee=NONE
-    echo [*] Please follow this KLicensee sample:00000000000000000000000000000000
+    std::puts("[*] Please follow this KLicensee sample:00000000000000000000000000000000");
     set /p klicensee=[?] Please enter KLicensee / A to Abort:
     if %klicensee%==NONE (
-        goto customklic
+        customklic();
     )
     if %klicensee%==A (
-        goto custnpdrm
+        custnpdrm();
     )
     if %klicensee%==a (
-        goto custnpdrm
+        custnpdrm();
     )
     set kliclen=0
     for /l %%a in (0 1 99) do if not "!klicensee:~%%a,1!"=="" set /a kliclen=%%a+1
     if %kliclen% NEQ 32 (
-        echo [*] Invalid Klicensee format, please enter following the KLicensee sample.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto customklic
+        std::puts("[*] Invalid Klicensee format, please enter following the KLicensee sample.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        customklic();
     )
     set npapptype=SPRX
     if %contentid:~7,1%==B (
         set npapptype=USPRX
     )
-    if exist self\%shortname%.%selfsuffix% (
-        del self\%shortname%.%selfsuffix%
+    if(fs::exists("self\%shortname%.%selfsuffix% ")) {
+        fs::remove("self\%shortname%.%selfsuffix%");
     )
-    echo [*] Patching %elfname%...
-    tool\FixELF self\%elfname% %elfsdk%
-    echo [*] Encrypting %elfname%...
+    std::puts("[*] Patching %elfname%...");
+    fix_elf("self\%elfname%", elfsdk);
+    std::puts("[*] Encrypting %elfname%...");
     if %ctrlflagswitch%==FALSE (
         tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=%npapptype% --np-klicensee=%klicensee% --np-real-fname=%shortname%.%selfsuffix% --encrypt self\%elfname% self\%shortname%.%selfsuffix%>nul
     )
     if %ctrlflagswitch%==TRUE (
         tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=%npapptype% --np-klicensee=%klicensee% --np-real-fname=%shortname%.%selfsuffix% --encrypt self\%elfname% self\%shortname%.%selfsuffix%>nul
     )
-    echo [*] Custom sign finished.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto mainmenu
+    std::puts("[*] Custom sign finished.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
 }
 
 
 void decfself() {
-    if not exist EBOOT.BIN (
-        echo [^^!] EBOOT.BIN cannot be found.
-        echo [^^!] Decrypt aborted.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto mainmenu
+    if(!fs::exists("EBOOT.BIN ")) {
+        std::puts("[^^!] EBOOT.BIN cannot be found.");
+        std::puts("[^^!] Decrypt aborted.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        return;
     )
-    if exist EBOOT.ELF (
-        del EBOOT.ELF
+    if(fs::exists("EBOOT.ELF ")) {
+        fs::remove("EBOOT.ELF");
     )
-    echo [*] Decrypting EBOOT.BIN...
+    std::puts("[*] Decrypting EBOOT.BIN...");
     tool\unfself EBOOT.BIN EBOOT.ELF>nul
-    if exist EBOOT.ELF (
-        echo [*] Decrypt finished.
+    if(fs::exists("EBOOT.ELF ")) {
+        std::puts("[*] Decrypt finished.");
     ) else (
-        echo [^^!] Decrypt EBOOT.BIN failed.
+        std::puts("[^^!] Decrypt EBOOT.BIN failed.");
     )
-    echo [*] Press any key to continue...
-    pause>nul
-    goto mainmenu
+    std::puts("[*] Press any key to continue...");
+    wait_input();
 }
 
 
 void discdex() {
-    set autoresign=FALSE
-    if not exist EBOOT.BIN (
-        if not exist EBOOT.ELF (
-            echo [^^!] EBOOT.BIN/ELF cannot be found.
-            echo [^^!] Resign aborted.
-            echo [*] Press any key to continue...
-            pause>nul
-            goto mainmenu
+    autoresign="FALSE";
+    if(!fs::exists("EBOOT.BIN ")) {
+        if(!fs::exists("EBOOT.ELF ")) {
+            std::puts("[^^!] EBOOT.BIN/ELF cannot be found.");
+            std::puts("[^^!] Resign aborted.");
+            std::puts("[*] Press any key to continue...");
+            wait_input();
+            return;
         )
     )
-    if not exist EBOOT.ELF (
-        echo [*] Decrypting EBOOT.BIN...
+    if(!fs::exists("EBOOT.ELF ")) {
+        std::puts("[*] Decrypting EBOOT.BIN...");
         tool\scetool.exe --decrypt EBOOT.BIN EBOOT.ELF>nul
-        set autoresign=TRUE
+        autoresign="TRUE";
     )
-    if not exist EBOOT.ELF (
-        echo [^^!] Decrypt EBOOT.BIN failed.
-        echo [^^!] Resign aborted.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto mainmenu
+    if(!fs::exists("EBOOT.ELF ")) {
+        std::puts("[^^!] Decrypt EBOOT.BIN failed.");
+        std::puts("[^^!] Resign aborted.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        return;
     )
-    if exist EBOOT.BIN (
-        if exist EBOOT.BIN.BAK (
-            del EBOOT.BIN.BAK
+    if(fs::exists("EBOOT.BIN ")) {
+        if(fs::exists("EBOOT.BIN.BAK ")) {
+            fs::remove("EBOOT.BIN.BAK");
         )
-        ren EBOOT.BIN EBOOT.BIN.BAK
+        fs::rename("EBOOT.BIN", "EBOOT.BIN.BAK");
     )
-    echo [*] Patching EBOOT.ELF...
-    tool\FixELF EBOOT.ELF
-    echo [*] Encrypting EBOOT.ELF...
+    std::puts("[*] Patching EBOOT.ELF...");
+    fix_elf("EBOOT.ELF");
+    std::puts("[*] Encrypting EBOOT.ELF...");
     tool\make_fself EBOOT.ELF EBOOT.BIN>nul
     if %autoresign%==TRUE (
-        del EBOOT.ELF
+        fs::remove("EBOOT.ELF");
     )
-    echo [*] Resign finished.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto mainmenu
+    std::puts("[*] Resign finished.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
 }
 
 void npdrmdex() {
-    set autoresign=FALSE
-    if not exist EBOOT.BIN (
-        if not exist EBOOT.ELF (
-            echo [^^!] EBOOT.BIN/ELF cannot be found.
-            echo [^^!] Resign aborted.
-            echo [*] Press any key to continue...
-            pause>nul
-            goto mainmenu
+    autoresign="FALSE";
+    if(!fs::exists("EBOOT.BIN ")) {
+        if(!fs::exists("EBOOT.ELF ")) {
+            std::puts("[^^!] EBOOT.BIN/ELF cannot be found.");
+            std::puts("[^^!] Resign aborted.");
+            std::puts("[*] Press any key to continue...");
+            wait_input();
+            return;
         )
     )
-    if not exist EBOOT.ELF (
-        echo [*] Decrypting EBOOT.BIN...
+    if(!fs::exists("EBOOT.ELF ")) {
+        std::puts("[*] Decrypting EBOOT.BIN...");
         tool\scetool.exe --decrypt EBOOT.BIN EBOOT.ELF>nul
-        set autoresign=TRUE
+        autoresign="TRUE";
     )
-    if not exist EBOOT.ELF (
-        echo [^^!] Decrypt EBOOT.BIN failed.
-        echo [^^!] Resign aborted.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto mainmenu
+    if(!fs::exists("EBOOT.ELF ")) {
+        std::puts("[^^!] Decrypt EBOOT.BIN failed.");
+        std::puts("[^^!] Resign aborted.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        return;
     )
-    if exist EBOOT.BIN (
-        if exist EBOOT.BIN.BAK (
-            del EBOOT.BIN.BAK
+    if(fs::exists("EBOOT.BIN ")) {
+        if(fs::exists("EBOOT.BIN.BAK ")) {
+            fs::remove("EBOOT.BIN.BAK");
         )
-        ren EBOOT.BIN EBOOT.BIN.BAK
+        fs::rename("EBOOT.BIN", "EBOOT.BIN.BAK");
     )
-    echo [*] Patching EBOOT.ELF...
-    tool\FixELF EBOOT.ELF
-    echo [*] Encrypting EBOOT.ELF...
+    std::puts("[*] Patching EBOOT.ELF...");
+    fix_elf("EBOOT.ELF");
+    std::puts("[*] Encrypting EBOOT.ELF...");
     tool\make_fself_npdrm EBOOT.ELF EBOOT.BIN>nul
-    if %autoresign%==TRUE (
-        del EBOOT.ELF
-    )
-    echo [*] Resign finished.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto mainmenu
+    if(autoresign=="TRUE") {
+        fs::remove("EBOOT.ELF");
+    }
+    std::puts("[*] Resign finished.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
 }
 
 
 void outputoption() {
-    if %output%==4xxstd (
-        set output=4xxalt
-        set outputmsg=[4.XX ALT]
-        set elfsdk=41
-        set keyrev=1C
-        set fwver=0004002000000000
-        set ctrlflagswitch=TRUE
-        set capflagswitch=FALSE
-        echo [*] Output method has been set to 4.XX ALT.
-        pause>nul
-        goto mainmenu
-    )
-    if %output%==4xxalt (
-        set output=4xxode
-        set outputmsg=[4.XX ODE]
-        set elfsdk=33
-        set keyrev=0A
-        set fwver=0003005500000000
-        set ctrlflagswitch=FALSE
-        set capflagswitch=TRUE
-        echo [*] Output method has been set to 4.XX ODE.
-        pause>nul
-        goto mainmenu
-    )
-    if %output%==4xxode (
-        set output=3xxstd
-        set outputmsg=[3.XX STD]
-        set elfsdk=33
-        set keyrev=04
-        set fwver=0003004000000000
-        set ctrlflagswitch=FALSE
-        set capflagswitch=FALSE
-        echo [*] Output method has been set to 3.XX STD.
-        pause>nul
-        goto mainmenu
-    )
-    if %output%==3xxstd (
-        set output=3xxalt
-        set outputmsg=[3.XX ALT]
-        set elfsdk=33
-        set keyrev=04
-        set fwver=0003004000000000
-        set ctrlflagswitch=TRUE
-        set capflagswitch=FALSE
-        echo [*] Output method has been set to 3.XX ALT.
-        pause>nul
-        goto mainmenu
-    )
-    if %output%==3xxalt (
-        set output=4xxstd
-        set outputmsg=[4.XX STD]
-        set elfsdk=41
-        set keyrev=1C
-        set fwver=0004002000000000
-        set ctrlflagswitch=FALSE
-        set capflagswitch=FALSE
-        echo [*] Output method has been set to 4.XX STD.
-        pause>nul
-        goto mainmenu
-    )
+    if(output=="4xxstd") {
+        output="4xxalt";
+        outputmsg="[4.XX ALT]";
+        elfsdk="41";
+        keyrev="1C";
+        fwver="0004002000000000";
+        ctrlflagswitch="TRUE";
+        capflagswitch="FALSE";
+        std::puts("[*] Output method has been set to 4.XX ALT.");
+        wait_input();
+        return;
+    } else if(output=="4xxalt") {
+        output="4xxode";
+        outputmsg="[4.XX ODE]";
+        elfsdk="33";
+        keyrev="0A";
+        fwver="0003005500000000";
+        ctrlflagswitch="FALSE";
+        capflagswitch="TRUE";
+        std::puts("[*] Output method has been set to 4.XX ODE.");
+        wait_input();
+        return;
+    } else if(output=="4xxode") {
+        output="3xxstd";
+        outputmsg="[3.XX STD]";
+        elfsdk="33";
+        keyrev="04";
+        fwver="0003004000000000";
+        ctrlflagswitch="FALSE";
+        capflagswitch="FALSE";
+        std::puts("[*] Output method has been set to 3.XX STD.");
+        wait_input();
+        return;
+    } else if(output=="3xxstd") {
+        output="3xxalt";
+        outputmsg="[3.XX ALT]";
+        elfsdk="33";
+        keyrev="04";
+        fwver="0003004000000000";
+        ctrlflagswitch="TRUE";
+        capflagswitch="FALSE";
+        std::puts("[*] Output method has been set to 3.XX ALT.");
+        wait_input();
+        return;
+    } else if(output=="3xxalt") {
+        output="4xxstd";
+        outputmsg="[4.XX STD]";
+        elfsdk="41";
+        keyrev="1C";
+        fwver="0004002000000000";
+        ctrlflagswitch="FALSE";
+        capflagswitch="FALSE";
+        std::puts("[*] Output method has been set to 4.XX STD.");
+        wait_input();
+        return;
+    }
 }
 
 
 void compressoption() {
-    compressdata="NONE";
     if(compress=="FALSE") enablecompressoption();
     if(compress=="TRUE") disablecompressoption();
 }
 
 
 void enablecompressoption() {
-    set /p compressdata=[?] Enter Y to enable Compress Data / any other key to abort:
+    std::string compressdata{ "NONE" };
+    std::printf("Enter Y to enable Compress Data / any other key to abort:");
+    std::cin >> compressdata;
     if(compressdata=="NONE") return;
     if(compressdata=="Y") enablecompress();
-    if(compressdata%=="y") enablecompress();
+    if(compressdata=="y") enablecompress();
 }
 
 
@@ -1375,7 +1425,9 @@ void enablecompress() {
 }
 
 void disablecompressoption() {
-    set /p compressdata=[?] Enter Y to disable Compress Data / any other key to abort:
+    std::string compressdata{ "NONE" };
+    std::printf("Enter Y to disable Compress Data / any other key to abort:");
+    std::cin >> compressdata;
     if(compressdata=="NONE") return;
     if(compressdata=="Y") disablecompress();
     if(compressdata=="y") disablecompress();
