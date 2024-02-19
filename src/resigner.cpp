@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <string>
+#include <string_view>
 
 #include "tool/FixELF.hpp"
 
@@ -17,6 +18,7 @@ static std::basic_string<char> ctrlflagswitch{ "FALSE" };
 static std::basic_string<char> capflagswitch{ "FALSE" };
 static std::basic_string<char> compress{ "TRUE" };
 static std::basic_string<char> compressmsg{ "[ON]" };
+static std::basic_string<char> contentid{ "NONE" };
 
 // Prototypes
 void mainmenu();
@@ -189,8 +191,8 @@ void mainmenu() {
                 " =============================================================================== \n"
                 "^|                               SWITCH (CEX CFW)                              ^|\n"
                 " =============================================================================== \n"
-                "^| O. Output Method: %s                                                  ^|\n"
-                "^| D. Compress Data: %s                                                      ^|\n"
+                "^| 12. Output Method: %s                                                 ^|\n"
+                "^| 13. Compress Data: %s                                                     ^|\n"
                 "^|                                                                             ^|\n"
                 "^|                                                                             ^|\n"
                 " =============================================================================== \n"
@@ -199,15 +201,13 @@ void mainmenu() {
                 " =============================================================================== \n",
                 outputmsg.c_str(), compressmsg.c_str());
 
-    char choice{ '0' };
-    std::printf("Please enter your choice (1-11/O/D/C/I/G/T):");
+    int choice{ '0' };
+    std::printf("Please enter your choice (1-13):");
     std::cin >> choice;
 
     switch(choice){
-        case '1':  decself(); break;
-        case '2':  disccex(); break;
-
-        /*
+        case 1:  decself(); break;
+        case 2:  disccex(); break;
         case 3:  npdrmcex(); break;
         case 4:  decsprx(); break;
         case 5:  selfcex(); break;
@@ -217,22 +217,8 @@ void mainmenu() {
         case 9:  decfself(); break;
         case 10: discdex(); break;
         case 11: npdrmdex(); break;
-        case 'C' : credits(); break;
-        case 'c' : credits(); break;
-        case 'I' : ins(); break;
-        case 'i' : ins(); break;
-        case 'G' : getTools(); break;
-        case 'g' : getTools(); break;
-        case 'T' : aboutta(); break;
-        case 't' : aboutta(); break;
-        case 'X' : exit(); break;
-        case 'x' : exit(); break;
-        case 'O' : outputoption(); break;
-        case 'o' : outputoption(); break;
-        case 'D' : compressoption(); break;
-        case 'd' : compressoption(); break;
-        */
-        //default: mainmenu();
+        case 12 : outputoption(); break;
+        case 13 : compressoption(); break;
     }
 
     std::cout << "Invalid input, please enter among (1-11/O/D/C/I/G/T)." << std::endl;
@@ -273,89 +259,107 @@ void npdrmcex() {
         return;
     }
 
-    std::string contentid="NONE";
+    contentid="NONE";
     system("./tool/scetool -i EBOOT.BIN>./tool/selfinfo.txt");
-    for /f "skip=3 tokens=1,*" %%i in (tool\selfinfo.txt) do if "%%i"=="ContentID" set contentid=%%j
-    if %contentid%==NONE (
-        goto customcid
-    )
+    
+    std::ifstream file("./tool/selfinfo.txt");
+    std::string line;
+
+    // Skip the first 3 lines
+    for (int i = 0; i < 3; ++i) {
+        std::getline(file, line);
+    }
+
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::string token;
+
+        iss >> token;
+        if (token == "ContentID") {
+            iss >> contentid;
+            break;
+        }
+    }
+
+    if (contentid == "NONE") {
+        customcid();
+    }
 }
 
 void usecid() {
-    usecid="NONE";
-    std::printf("[*] Found ContentID in EBOOT.BIN: %s\n", contentid);
-    set /p usecid=[?] Return to use this Content-ID / Enter A to enter custom ContentID:
+    int usecid{ 0 };
+    std::printf("[*] Found ContentID in EBOOT.BIN: %s\n", contentid.c_str());
+    std::printf("usecid=[%s]\1: Return to use this Content-ID Enter\n2: Enter custom ContentID:", contentid.c_str());
+    std::cin >> usecid;
     
-    if (usecid=="NONE") encrypt();
-    if (usecid=="A") customcid();
-    if (usecid=="a") customcid();
+    if (!usecid || usecid == 1) encrypt();
+    else customcid();
 }
 
 
 void customcid() {
-    set customcid=NONE
-    echo [*] Enter custom ContentID:
-    echo [*] Please follow this sample ContentID:JP9000-NPJA00001_00-0000000000000000
-    set /p customcid=[?] Enter custom ContentID / A to Abort:
-    if %customcid%==NONE (
-        goto customcid
-    )
-    if %customcid%==A (
-        goto mainmenu
-    )
-    if %customcid%==a (
-        goto mainmenu
-    )
-    set cidlength=0
-    for /l %%a in (0 1 99) do if not "!customcid:~%%a,1!"=="" set /a cidlength=%%a+1
-    if %cidlength% NEQ 36 (
-        echo [^^!] Invalid ContentID format, please enter following the sample ContentID.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto customcid
-    )
-    if %customcid:~6,1% NEQ - (
-        echo [^^!] Invalid ContentID format, please enter following the sample ContentID.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto customcid
-    )
-    if %customcid:~16,4% NEQ _00- (
-        echo [^^!] Invalid ContentID format, please enter following the sample ContentID.
-        echo [*] Press any key to continue...
-        pause>nul
-        goto customcid
-    )
-    set contentid=%customcid%
+    std::basic_string<char> s_customcid{ "NONE" };
+    std::puts("[*] Enter custom ContentID:");
+    std::puts("[*] Please follow this sample ContentID:JP9000-NPJA00001_00-0000000000000000");
+    std::printf("Enter custom ContentID: (Enter A to Abort)");
+    std::cin >> s_customcid;
+
+    if (s_customcid=="NONE") {
+        customcid();
+    } else if (s_customcid=="A") {
+        return;
+    } else if (s_customcid=="a") {
+        return;
+    }
+    const int cidlength{ static_cast<int>(s_customcid.length()) };
+
+    if(cidlength != 36) {
+        std::puts("[^^!] Invalid ContentID format, please enter following the sample ContentID.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        customcid();
+    }
+    if(s_customcid.at(6) != '-') {
+        std::puts("[^^!] Invalid ContentID format, please enter following the sample ContentID.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        customcid();
+    }
+    if(s_customcid.substr(16,4) != "_00-") {
+        std::puts("[^^!] Invalid ContentID format, please enter following the sample ContentID.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        customcid();
+    }
+    contentid=s_customcid;
 }
 
 void encrypt() {
-    if exist EBOOT.BIN (
-        if exist EBOOT.BIN.BAK (
-            del EBOOT.BIN.BAK
-        )
-        ren EBOOT.BIN EBOOT.BIN.BAK
+    if(fs::exists("EBOOT.BIN")) {
+        if(fs::exists("EBOOT.BIN.BAK")) {
+            fs::remove("EBOOT.BIN.BAK");
+        }
+        fs::rename("EBOOT.BIN", "EBOOT.BIN.BAK");
+    }
+    std::puts("[*] Patching EBOOT.ELF...");
+    fix_elf("EBOOT.ELF", elfsdk);
+    std::puts("[*] Encrypting EBOOT.ELF...");
+    std::basic_string<char> npapptype{ "EXEC" };
+    if(contentid.substr(7,1) == "B") {
+        npapptype="UEXEC";
+    }
+    if(ctrlflagswitch=="FALSE") (
+        tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=%npapptype% --np-real-fname=EBOOT.BIN --encrypt EBOOT.ELF EBOOT.BIN
     )
-    echo [*] Patching EBOOT.ELF...
-    tool\FixELF EBOOT.ELF %elfsdk%
-    echo [*] Encrypting EBOOT.ELF...
-    set npapptype=EXEC
-    if %contentid:~7,1%==B (
-        set npapptype=UEXEC
-    )
-    if %ctrlflagswitch%==FALSE (
-        tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=%npapptype% --np-real-fname=EBOOT.BIN --encrypt EBOOT.ELF EBOOT.BIN>nul
-    )
-    if %ctrlflagswitch%==TRUE (
-        tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=%npapptype% --np-real-fname=EBOOT.BIN --encrypt EBOOT.ELF EBOOT.BIN>nul
-    )
-    if %autoresign%==TRUE (
-        del EBOOT.ELF
-    )
-    echo [*] Resign finished.
-    echo [*] Press any key to continue...
-    pause>nul
-    goto mainmenu
+    if(ctrlflagswitch=="TRUE") {
+        tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=%npapptype% --np-real-fname=EBOOT.BIN --encrypt EBOOT.ELF EBOOT.BIN
+    }
+    if(autoresign=="TRUE") {
+        fs::remove("EBOOT.ELF");
+    }
+    std::puts("[*] Resign finished.");
+    std::puts("[*] Press any key to continue...");
+    wait_input();
 }
 
 void decsprx() {
