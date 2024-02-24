@@ -1,7 +1,9 @@
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <string>
 #include <format>
+#include <array>
 
 #include "tool/FixELF.hpp"
 
@@ -19,6 +21,12 @@ static std::basic_string<char> capflagswitch{ "FALSE" };
 static std::basic_string<char> compress{ "TRUE" };
 static std::basic_string<char> compressmsg{ "[ON]" };
 static std::basic_string<char> contentid{ "NONE" };
+static std::basic_string<char> autoresign{ "TRUE" };
+static std::basic_string<char> selfname;
+static std::basic_string<char> sufname;
+static std::basic_string<char> shortname;
+
+static int count{ 0 };
 
 // Prototypes
 void mainmenu();
@@ -63,8 +71,8 @@ void kliclist();
 
 
 static inline void cls(){
-    std::printf(u8"\033[2J\033[1;1H"); // clear screen
-    std::printf(u8"\033[1;32m"); // make the output green
+    std::printf("\033[2J\033[1;1H"); // clear screen
+    std::printf("\033[1;32m"); // make the output green
 }
 
 auto main() -> int {
@@ -191,7 +199,7 @@ void mainmenu() {
                 " =============================================================================== \n"
                 "^|                               SWITCH (CEX CFW)                              ^|\n"
                 " =============================================================================== \n"
-                "^| 12. Output Method: %s                                                 ^|\n"
+                "^| 12. Output Method: %s                                               ^|\n"
                 "^| 13. Compress Data: %s                                                     ^|\n"
                 "^|                                                                             ^|\n"
                 "^|                                                                             ^|\n"
@@ -211,12 +219,12 @@ void mainmenu() {
         case 3:  npdrmcex(); break;
         case 4:  decsprx(); break;
         case 5:  selfcex(); break;
-        case 6:  kliccex(); break;
-        case 7:  custnondrm(); break;
-        case 8:  custnpdrm(); break;
-        case 9:  decfself(); break;
-        case 10: discdex(); break;
-        case 11: npdrmdex(); break;
+        //case 6:  kliccex(); break;
+        //case 7:  custnondrm(); break;
+        //case 8:  custnpdrm(); break;
+        //case 9:  decfself(); break;
+        //case 10: discdex(); break;
+        //case 11: npdrmdex(); break;
         case 12 : outputoption(); break;
         case 13 : compressoption(); break;
     }
@@ -357,10 +365,19 @@ void encrypt() {
             "--np-real-fname=EBOOT.BIN --encrypt EBOOT.ELF EBOOT.BIN",
             compress, keyrev, fwver, contentid, npapptype
         )};
-        system(command);
+        system(command.c_str());
     }
     if(ctrlflagswitch=="TRUE") {
-        ./tool/scetool -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=%npapptype% --np-real-fname=EBOOT.BIN --encrypt EBOOT.ELF EBOOT.BIN
+        auto command{ std::format(
+            "./tool/scetool -v --sce-type=SELF --compress-data={} "
+            "--skip-sections=TRUE --key-revision={} --self-auth-id=1010000001000003 "
+            "--self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 "
+            "--self-fw-version={} --self-ctrl-flags={} --np-license-type=FREE "
+            "--np-content-id={} --np-app-type={} --np-real-fname=EBOOT.BIN "
+            "--encrypt EBOOT.ELF EBOOT.BIN",
+            compress, keyrev, fwver, selfctrlflags, contentid, npapptype
+        )};
+        system(command.c_str());
     }
     if(autoresign=="TRUE") {
         fs::remove("EBOOT.ELF");
@@ -368,6 +385,20 @@ void encrypt() {
     std::puts("[*] Resign finished.");
     std::puts("[*] Press any key to continue...");
     wait_input();
+}
+
+auto selectSelf(int n) -> std::string {
+    if(fs::exists("./tool/selflist.txt")) {
+        std::ifstream selflist("thefile.txt");
+        std::string file;
+        while (std::getline(selflist, file)) {
+            ++count;
+            if(count == n) {
+                return file;
+            }
+        }
+    }
+    return "";
 }
 
 void decsprx() {
@@ -378,19 +409,21 @@ void decsprx() {
     system("ls self | grep .self > ./tool/selflist.txt");
     system("ls self | grep .sprx > ./tool/selflist.txt");
     
-    int count{ 0 };
+    count = 0;
     cls();
 
     std::puts("===============================================================================");
     std::puts("SELF/SPRX Files List");
     std::puts("===============================================================================");
     if(fs::exists("./tool/selflist.txt")) {
-        for /f %%f in (./tool/selflist.txt) do (
-            count+=1;
+        std::ifstream selflist("thefile.txt");
+        std::string file;
+        while (std::getline(selflist, file)) {
+            ++count;
             if(count != 0) {
-                std::puts(" !count!. %%f ");
+                std::printf(" %d. %s ", count, file.c_str());
             }
-        )
+        }
      } else {
         std::puts("No SELF/SPRX is Found.");
      }
@@ -404,73 +437,135 @@ void decsprx() {
 }
 
 void decsel() {
-    selfsel="NONE";
-    set /p selfsel=[?] Enter SELF/SPRX file number to decrypt / B to Back:
-    if %selfsel%==NONE (
+    int selfsel{ 0 };
+    std::puts("Enter SELF/SPRX file number to decrypt / 99 to Back:");
+    std::cin >> selfsel;
+    if(selfsel==0) {
         decsprx();
-    )
-    if %selfsel%==B (
+    }
+    if(selfsel==99) {
         return;
-    )
-    if %selfsel%==b (
-        return;
-    )
-    if %selfsel% GTR !count! (
+    }
+    if(selfsel > count) {
         std::puts("[^^!] Invalid input, please enter again.");
         std::puts("[*] Press any key to continue...");
         wait_input();
         decsprx();
-    )
-    if %selfsel% LSS 1 (
+    }
+    if(selfsel < 1) {
         std::puts("[^^!] Invalid input, please enter again.");
         std::puts("[*] Press any key to continue...");
         wait_input();
         decsprx();
-    )
-    set selfname=!a%selfsel%!
-    set shortname=%selfname:~0,-5%
-    set sufname=%selfname:~-4,4%
-    if %sufname%==self (
+    }
+    
+    selfname = selectSelf(selfsel);
+    shortname = selfname.substr(0,selfname.length()-5);
+    sufname = selfname.substr(selfname.length()-4,4);
+
+    std::string elfsuffix;
+
+    if(sufname=="self") {
         elfsuffix="elf";
-    )
-    if %sufname%==SELF (
+    }
+    if(sufname=="SELF") {
         elfsuffix="ELF";
-    )
-    if %sufname%==sprx (
+    }
+    if(sufname=="sprx") {
         elfsuffix="prx";
-    )
-    if %sufname%==SPRX (
+    }
+    if(sufname=="SPRX") {
         elfsuffix="PRX";
-    )
-    if(fs::exists("self\%shortname%.%elfsuffix%"){ 
-        fs::remove("self\%shortname%.%elfsuffix%");
+    }
+    if(fs::exists(std::format("./self/{}.{}", shortname, elfsuffix))) { 
+        fs::remove(std::format("./self/{}.{}", shortname, elfsuffix));
     }
     std::puts("[*] Decrypting %selfname%...");
-    ./tool/scetool --decrypt self\%selfname% self\%shortname%.%elfsuffix%>nul
-    if(!fs::exists("self\%shortname%.%elfsuffix% ")) {
+    auto command { std::format(
+        "./tool/scetool --decrypt ./self/{} ./self/{}.{}",
+        selfname, shortname, elfsuffix
+    )};
+    system(command.c_str());
+
+    if(!fs::exists(std::format("./self/{}.{}", shortname, elfsuffix))) {
         chkcontentid();
-    )
+    }
     std::puts("[*] Decrypt file to %shortname%.%elfsuffix% successfully.");
     std::puts("[*] Press any key to continue...");
     wait_input();
     decsprx();
 }
 
-
 void chkcontentid() {
     contentid="NONE";
-    ./tool/scetool.exe -i self\%selfname%>./tool/selfinfo.txt
-    for /f "skip=3 tokens=1,*" %%i in (./tool/selfinfo.txt) do if "%%i"=="ContentID" set contentid=%%j
-    if %contentid%==NONE (
+    system( std::format("./tool/scetool -i ./self/{}>./tool/selfinfo.txt", selfname).c_str());
+    
+    std::ifstream infile("./tool/selfinfo.txt");
+    std::string line;
+    std::string contentid;
+
+    // Skip first 3 lines
+    for (int i{ 0 }; i < 3; ++i) {
+        std::getline(infile, line);
+    }
+
+    while (std::getline(infile, line)) {
+        size_t pos{ line.find_first_of(" \t") };
+        if (pos != std::string::npos) {
+            std::string token = line.substr(0, pos);
+
+            if (token == "ContentID") {
+                contentid = line.substr(pos + 1);
+                break;
+            }
+        }
+    }
+
+    if(contentid=="NONE") {
         std::puts("[^^!] Decrypt %selfname% failed.");
         std::puts("[*] Press any key to continue...");
         wait_input();
         decsprx();
-    )
-    std::puts("[*] Found ContentID in %sufname% file: %contentid%");
+    }
+    std::printf("[*] Found ContentID in %s file: %s\n", sufname, contentid);
 }
 
+void selfcex() {
+    if(fs::exists("./tool/selflist.txt ")) {
+        fs::remove("./tool/selflist.txt");
+    }
+    if(fs::exists("*.self ")) {
+        system("ls | grep .self >./tool/selflist.txt");
+    }
+    if(fs::exists("*.sprx ")) {
+        system("ls | .sprx >>./tool/selflist.txt");
+    }
+    int count{ 0 };
+    cls();
+    std::puts("===============================================================================");
+    std::puts(" SELF/SPRX Files List");
+    std::puts("===============================================================================");
+    if(fs::exists("./tool/selflist.txt ")) {
+        std::ifstream infile("./tool/selflist.txt");
+        std::string filename;
 
+        const int MAX_COUNT{ 100 };
+        std::array<std::string, MAX_COUNT> filenames;
+        while (std::getline(infile, filename) && count < MAX_COUNT) {
+            filenames[count] = filename;
+            ++count;
+        }
+    } else {
+        std::puts(" No SELF/SPRX is Found.");
+    }
+    std::puts("===============================================================================");
+    if(count==0) {
+        wait_input();
+        return;
+    }
+}
+
+/*
 void chklist() {
     if(!fs::exists("./tool/kliclist.txt")) {
         chkpool();
@@ -560,76 +655,45 @@ void decklic() {
         std::puts("[^^!] Decrypt !selfname%count%! failed.");
         std::puts("[*] Press any key to continue...");
         wait_input();
-    )
+    }
     std::puts("[*] Decrypt file to %shortname%.%elfsuffix% successfully.");
     std::puts("[*] Press any key to continue...");
     wait_input();
     decsprx();
 }
 
-
-void selfcex() {
-    if(fs::exists("./tool/selflist.txt ")) {
-        fs::remove("./tool/selflist.txt");
-    }
-    if(fs::exists("*.self ")) {
-        dir *.self /b >./tool/selflist.txt
-    }
-    if(fs::exists("*.sprx ")) {
-        dir *.sprx /b >>./tool/selflist.txt
-    }
-    int count{ 0 };
-    cls();
-    std::puts("===============================================================================");
-    std::puts(" SELF/SPRX Files List");
-    std::puts("===============================================================================");
-    if(fs::exists("./tool/selflist.txt ")) {
-        for /f %%f in ("./tool/selflist.txt") do (
-            set /a count+=1
-            set a!count!=%%f
-            if count NEQ 0 (std::puts(" !count!. %%f )");
-        )
-    ) else (
-        std::puts(" No SELF/SPRX is Found.");
-    )
-    std::puts("===============================================================================");
-    if !count!==0 (
-        wait_input();
-        return;
-    )
-}
-
-
 void selfsel() {
     selfsel="NONE";
     set /p selfsel=[?] Enter SELF/SPRX file number to resign / A for All / B to Back:
-    if %selfsel%==NONE (
+
+    if(selfsel=="NONE") {
         selfcex();
-    )
-    if %selfsel%==A (
+    }
+    if(selfsel=="A") {
         selfall();
-    )
-    if %selfsel%==a (
+    }
+    if(selfsel=="a") {
         selfall();
-    )
-    if %selfsel%==B (
+    }
+    if(selfsel=="B") {
         mainmenu();
-    )
-    if %selfsel%==b (
+    }
+    if(selfsel=="b") {
         mainmenu();
-    )
-    if %selfsel% GTR !count! (
+    }
+    if(selfsel > count) {
         std::puts("[^^!] Invalid input, please enter again.");
         std::puts("[*] Press any key to continue...");
         wait_input();
         selfsel();
-    )
-    if %selfsel% LSS 1 (
+    }
+    if(selfsel < 1) {
         std::puts("[^^!] Invalid input, please enter again.");
         std::puts("[*] Press any key to continue...");
         wait_input();
         selfsel();
-    )
+    }
+
     set selfname=!a%selfsel%!
     set shortname=%selfname:~0,-5%
     set sufname=%selfname:~-4,4%
@@ -1244,17 +1308,17 @@ void decfself() {
         std::puts("[*] Press any key to continue...");
         wait_input();
         return;
-    )
+    }
     if(fs::exists("EBOOT.ELF ")) {
         fs::remove("EBOOT.ELF");
-    )
+    }
     std::puts("[*] Decrypting EBOOT.BIN...");
-    tool\unfself EBOOT.BIN EBOOT.ELF>nul
+    system("./tool/unfself EBOOT.BIN EBOOT.ELF");
     if(fs::exists("EBOOT.ELF ")) {
         std::puts("[*] Decrypt finished.");
-    ) else (
+    } else {
         std::puts("[^^!] Decrypt EBOOT.BIN failed.");
-    )
+    }
     std::puts("[*] Press any key to continue...");
     wait_input();
 }
@@ -1269,26 +1333,26 @@ void discdex() {
             std::puts("[*] Press any key to continue...");
             wait_input();
             return;
-        )
-    )
+        }
+    }
     if(!fs::exists("EBOOT.ELF ")) {
         std::puts("[*] Decrypting EBOOT.BIN...");
         tool\scetool.exe --decrypt EBOOT.BIN EBOOT.ELF>nul
         autoresign="TRUE";
-    )
+    }
     if(!fs::exists("EBOOT.ELF ")) {
         std::puts("[^^!] Decrypt EBOOT.BIN failed.");
         std::puts("[^^!] Resign aborted.");
         std::puts("[*] Press any key to continue...");
         wait_input();
         return;
-    )
+    }
     if(fs::exists("EBOOT.BIN ")) {
         if(fs::exists("EBOOT.BIN.BAK ")) {
             fs::remove("EBOOT.BIN.BAK");
-        )
+        }
         fs::rename("EBOOT.BIN", "EBOOT.BIN.BAK");
-    )
+    }
     std::puts("[*] Patching EBOOT.ELF...");
     fix_elf("EBOOT.ELF");
     std::puts("[*] Encrypting EBOOT.ELF...");
@@ -1310,26 +1374,26 @@ void npdrmdex() {
             std::puts("[*] Press any key to continue...");
             wait_input();
             return;
-        )
-    )
+        }
+    }
     if(!fs::exists("EBOOT.ELF ")) {
         std::puts("[*] Decrypting EBOOT.BIN...");
         tool\scetool.exe --decrypt EBOOT.BIN EBOOT.ELF>nul
         autoresign="TRUE";
-    )
+    }
     if(!fs::exists("EBOOT.ELF ")) {
         std::puts("[^^!] Decrypt EBOOT.BIN failed.");
         std::puts("[^^!] Resign aborted.");
         std::puts("[*] Press any key to continue...");
         wait_input();
         return;
-    )
+    }
     if(fs::exists("EBOOT.BIN ")) {
         if(fs::exists("EBOOT.BIN.BAK ")) {
             fs::remove("EBOOT.BIN.BAK");
-        )
+        }
         fs::rename("EBOOT.BIN", "EBOOT.BIN.BAK");
-    )
+    }
     std::puts("[*] Patching EBOOT.ELF...");
     fix_elf("EBOOT.ELF");
     std::puts("[*] Encrypting EBOOT.ELF...");
@@ -1341,7 +1405,7 @@ void npdrmdex() {
     std::puts("[*] Press any key to continue...");
     wait_input();
 }
-
+*/
 
 void outputoption() {
     if(output=="4xxstd") {
