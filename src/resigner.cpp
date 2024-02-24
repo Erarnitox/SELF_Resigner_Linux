@@ -219,7 +219,7 @@ void mainmenu() {
         case 3:  npdrmcex(); break;
         case 4:  decsprx(); break;
         case 5:  selfcex(); break;
-        //case 6:  kliccex(); break;
+        case 6:  kliccex(); break;
         //case 7:  custnondrm(); break;
         //case 8:  custnpdrm(); break;
         //case 9:  decfself(); break;
@@ -535,10 +535,10 @@ void selfcex() {
         fs::remove("./tool/selflist.txt");
     }
     if(fs::exists("*.self ")) {
-        system("ls | grep .self >./tool/selflist.txt");
+        system("ls self | grep .self >./tool/selflist.txt");
     }
     if(fs::exists("*.sprx ")) {
-        system("ls | .sprx >>./tool/selflist.txt");
+        system("ls self | grep .sprx >>./tool/selflist.txt");
     }
     int count{ 0 };
     cls();
@@ -565,6 +565,133 @@ void selfcex() {
     }
 }
 
+void kliccex() {
+    if(output=="4xxode") {
+        std::puts("[^^!] NPDRM Resign is inapplicable for ODE Output.");
+        wait_input();
+        return;
+    }
+    
+    if(fs::exists("./tool/selflist.txt ")) {
+        fs::remove("./tool/selflist.txt");
+    }
+    if(fs::exists("self ")) {
+        system("ls self | grep .self >./tool/selflist.txt");
+    }
+    if(fs::exists("self")) {
+        system("ls self | grep .sprx >>./tool/selflist.txt");
+    }
+   
+    int count{ 0 };
+    cls();
+    std::puts("===============================================================================");
+    std::puts(" SELF/SPRX Files List");
+    std::puts("===============================================================================");
+    if(fs::exists("./tool/selflist.txt ")) {
+        std::ifstream infile("./tool/selflist.txt");
+        std::string filename;
+
+        const int MAX_COUNT{ 100 };
+        std::array<std::string, MAX_COUNT> filenames;
+        while (std::getline(infile, filename) && count < MAX_COUNT) {
+            filenames[count] = filename;
+            ++count;
+        }
+    } else {
+        std::puts(" No SELF/SPRX is Found.");
+    };
+    std::puts("===============================================================================");
+    if(count==0) {
+        wait_input();
+        return;
+    }
+    std::puts(" Note: BruteForce Detecting Klicensee method will be used in this option.");
+    std::puts("       EBOOT.BIN must be placed into Resigner folder for detecting Klicensee.");
+    std::puts("       Make sure that EBOOT.BIN and SELF/SPRX files are from the same game.");
+    std::puts("===============================================================================");
+    
+    std::string klicgo{ "NONE" };
+    std::printf("Enter Y to continue / N to Abort:");
+    if(klicgo=="Y" || klicgo =="y") {
+        checkeboot();
+    }
+}
+
+void checkeboot() {
+    if(!fs::exists("EBOOT.BIN ")) {
+        std::puts("[^^!] EBOOT.BIN cannot be found in Resigner folder.");
+        std::puts("[^^!] Resign aborted.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        kliccex();
+    }
+    contentid="NONE";
+    system("./tool/scetool -i EBOOT.BIN>./tool/selfinfo.txt");
+    //for /f "skip=3 tokens=1,*" %%i in (tool\selfinfo.txt) do if "%%i"=="ContentID" set contentid=%%j
+    if(contentid=="NONE") {
+        std::puts("[^^!] EBOOT.BIN should be an NPDRM EBOOT.");
+        std::puts("[^^!] Resign aborted.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        kliccex();
+    }
+    if(fs::exists("./tool/kliclist.txt")) {
+        kliclist();
+    }
+   //klicdec();
+}
+
+void chkeboot() {
+    if(!fs::exists("EBOOT.BIN ")) {
+        std::puts("[*] EBOOT.BIN cannot be found in Resigner folder.");
+        std::puts("[^^!] Decrypt %selfname% failed.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        decsprx();
+    }
+    if(fs::exists("EBOOT.ELF ")) {
+        fs::remove("EBOOT.ELF");
+    }
+    system("./tool/scetool --decrypt EBOOT.BIN EBOOT.ELF");
+    if(!fs::exists("EBOOT.ELF ")) {
+        std::puts("[^^!] Decrypt EBOOT.BIN failed.");
+        std::puts("[^^!] Decrypt %selfname% failed.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        decsprx();
+    }
+    std::puts("[*] Start BruteForce Detecting Klicensee, please wait...");
+    system("./tool/klicencebruteforce -x self\%selfname% EBOOT.ELF ./data/keys>./tool/bruteforce.txt");
+    if(fs::exists("EBOOT.ELF ")) {
+        fs::remove("EBOOT.ELF");
+    }
+    //for /f "skip=3 tokens=1,*" %%i in (tool\bruteforce.txt) do if "%%i"=="[*]" set bruteforceresult=%%j
+    std::string bruteforceresult;
+    if(bruteforceresult.substr(4,2)=="no") {
+        std::puts("[^^!] Cannot find Klicensee, BruteForce Detecting failed.");
+        std::puts("[^^!] Decrypt %selfname% failed.");
+        std::puts("[*] Press any key to continue...");
+        wait_input();
+        decsprx();
+     } else {
+        //foundkliceboot();
+     }
+}
+
+void kliclist() {
+    std::string klicensee="NONE";
+    //for /f "tokens=1,*" %%i in (tool\kliclist.txt) do if "%%i"=="%contentid%" set klicensee=%%j
+    //for /l %%a in (0 1 99) do if not "!klicensee:~%%a,1!"=="" set /a kliclen=%%a+1
+    size_t kliclen{ 0 };
+
+    if (kliclen != 32) {
+        //bruteforcepool();
+    } else {
+        std::puts("[*] Found ContentID in EBOOT.BIN: %contentid%");
+        std::puts("[*] Found Klicensee in Klic List: %klicensee%");
+        //klicresign();
+    }
+}
 /*
 void chklist() {
     if(!fs::exists("./tool/kliclist.txt")) {
@@ -599,44 +726,6 @@ void chkpool() {
     std::puts("%contentid% %klicensee%>>tool\kliclist.txt");
     decklic();
 }
-
-
-void chkeboot() {
-    if(!fs::exists("EBOOT.BIN ")) {
-        std::puts("[*] EBOOT.BIN cannot be found in Resigner folder.");
-        std::puts("[^^!] Decrypt %selfname% failed.");
-        std::puts("[*] Press any key to continue...");
-        wait_input();
-        decsprx();
-    }
-    if(fs::exists("EBOOT.ELF ")) {
-        fs::remove("EBOOT.ELF");
-    }
-    system("./tool/scetool --decrypt EBOOT.BIN EBOOT.ELF");
-    if(!fs::exists("EBOOT.ELF ")) {
-        std::puts("[^^!] Decrypt EBOOT.BIN failed.");
-        std::puts("[^^!] Decrypt %selfname% failed.");
-        std::puts("[*] Press any key to continue...");
-        wait_input();
-        decsprx();
-    }
-    std::puts("[*] Start BruteForce Detecting Klicensee, please wait...");
-    system("./tool/klicencebruteforce -x self\%selfname% EBOOT.ELF data\keys>tool\bruteforce.txt");
-    if(fs::exists("EBOOT.ELF ")) {
-        fs::remove("EBOOT.ELF");
-    }
-    for /f "skip=3 tokens=1,*" %%i in (tool\bruteforce.txt) do if "%%i"=="[*]" set bruteforceresult=%%j
-    if %bruteforceresult:~4,2%==no (
-        std::puts("[^^!] Cannot find Klicensee, BruteForce Detecting failed.");
-        std::puts("[^^!] Decrypt %selfname% failed.");
-        std::puts("[*] Press any key to continue...");
-        wait_input();
-        decsprx();
-    ) else (
-        foundkliceboot();
-    )
-}
-
 
 void foundkliceboot() {
     set klicensee=%bruteforceresult:~24,32%
@@ -822,102 +911,6 @@ void selfall() {
     std::puts("[*] Press any key to continue...");
     wait_input();
 }
-
-
-void kliccex() {
-    if %output%==4xxode (
-        std::puts("[^^!] NPDRM Resign is inapplicable for ODE Output.");
-        wait_input();
-        return;
-    )
-    cd self
-    if(fs::exists("..\tool\selflist.txt ")) {
-        fs::remove("..\tool\selflist.txt");
-    }
-    if(fs::exists("*.self ")) {
-        dir *.self /b >..\tool\selflist.txt
-    }
-    if(fs::exists("*.sprx ")) {
-        dir *.sprx /b >>..\tool\selflist.txt
-    }
-    cd..
-    set /a count=0
-    cls
-    std::puts("===============================================================================");
-    std::puts(" SELF/SPRX Files List");
-    std::puts("===============================================================================");
-    if(fs::exists("tool\selflist.txt ")) {
-        for /f %%f in (tool\selflist.txt) do (
-            set /a count+=1
-            set a!count!=%%f
-            if count NEQ 0 (
-                std::puts(" !count!. %%f ");
-            )
-        )
-    } else {
-        std::puts(" No SELF/SPRX is Found.");
-    };
-    std::puts("===============================================================================");
-    if !count!==0 (
-        wait_input();
-        return;
-    )
-    std::puts(" Note: BruteForce Detecting Klicensee method will be used in this option.");
-    std::puts("       EBOOT.BIN must be placed into Resigner folder for detecting Klicensee.");
-    std::puts("       Make sure that EBOOT.BIN and SELF/SPRX files are from the same game.");
-    std::puts("===============================================================================");
-    set klicgo=NONE
-    set /p klicgo=[?] Enter any key to continue / B to Back:
-    if %klicgo%==NONE (
-        checkeboot();
-    )
-    if %klicgo%==B (
-        return;
-    )
-    if %klicgo%==b (
-        return;
-    )
-}
-
-
-void checkeboot() {
-    if(!fs::exists("EBOOT.BIN ")) {
-        std::puts("[^^!] EBOOT.BIN cannot be found in Resigner folder.");
-        std::puts("[^^!] Resign aborted.");
-        std::puts("[*] Press any key to continue...");
-        wait_input();
-        kliccex();
-    }
-    set contentid=NONE
-    tool\scetool.exe -i EBOOT.BIN>tool\selfinfo.txt
-    for /f "skip=3 tokens=1,*" %%i in (tool\selfinfo.txt) do if "%%i"=="ContentID" set contentid=%%j
-    if %contentid%==NONE (
-        std::puts("[^^!] EBOOT.BIN should be an NPDRM EBOOT.");
-        std::puts("[^^!] Resign aborted.");
-        std::puts("[*] Press any key to continue...");
-        wait_input();
-        kliccex();
-    )
-    if(fs::exists("tool\kliclist.txt ")) {
-        kliclist();
-    }
-    klicdec();
-}
-
-
-void kliclist() {
-    set klicensee=NONE
-    for /f "tokens=1,*" %%i in (tool\kliclist.txt) do if "%%i"=="%contentid%" set klicensee=%%j
-    for /l %%a in (0 1 99) do if not "!klicensee:~%%a,1!"=="" set /a kliclen=%%a+1
-    if %kliclen% NEQ 32 (
-        bruteforcepool();
-    ) else (
-        std::puts("[*] Found ContentID in EBOOT.BIN: %contentid%");
-        std::puts("[*] Found Klicensee in Klic List: %klicensee%");
-        klicresign();
-    )
-}
-
 
 void bruteforcepool() {
     if(!fs::exists("tool\klicpool.txt (goto klicdec")) {
