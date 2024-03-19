@@ -25,6 +25,9 @@ static std::basic_string<char> autoresign{ "TRUE" };
 static std::basic_string<char> selfname;
 static std::basic_string<char> sufname;
 static std::basic_string<char> shortname;
+static std::basic_string<char> bruteforceresult;
+static std::basic_string<char> klicensee="NONE";
+static std::basic_string<char> elfsuffix;
 
 static int count{ 0 };
 
@@ -68,7 +71,6 @@ void usecid();
 void npdrmcex();
 void customklic();
 void kliclist();
-
 
 static inline void cls(){
     std::printf("\033[2J\033[1;1H"); // clear screen
@@ -220,11 +222,11 @@ void mainmenu() {
         case 4:  decsprx(); break;
         case 5:  selfcex(); break;
         case 6:  kliccex(); break;
-        //case 7:  custnondrm(); break;
-        //case 8:  custnpdrm(); break;
-        //case 9:  decfself(); break;
-        //case 10: discdex(); break;
-        //case 11: npdrmdex(); break;
+        case 7:  custnondrm(); break;
+        case 8:  custnpdrm(); break;
+        case 9:  decfself(); break;
+        case 10: discdex(); break;
+        case 11: npdrmdex(); break;
         case 12 : outputoption(); break;
         case 13 : compressoption(); break;
     }
@@ -234,7 +236,6 @@ void mainmenu() {
     
     return;
 }
-
 
 void npdrmcex() {
     if (output == "4xxode") {
@@ -303,7 +304,6 @@ void usecid() {
     if (!usecid || usecid == 1) encrypt();
     else customcid();
 }
-
 
 void customcid() {
     std::basic_string<char> s_customcid{ "NONE" };
@@ -462,8 +462,6 @@ void decsel() {
     selfname = selectSelf(selfsel);
     shortname = selfname.substr(0,selfname.length()-5);
     sufname = selfname.substr(selfname.length()-4,4);
-
-    std::string elfsuffix;
 
     if(sufname=="self") {
         elfsuffix="elf";
@@ -638,13 +636,13 @@ void checkeboot() {
     if(fs::exists("./tool/kliclist.txt")) {
         kliclist();
     }
-   //klicdec();
+    klicdec();
 }
 
 void chkeboot() {
     if(!fs::exists("EBOOT.BIN ")) {
         std::puts("[*] EBOOT.BIN cannot be found in Resigner folder.");
-        std::puts("[^^!] Decrypt %selfname% failed.");
+        std::puts(std::format("[^^!] Decrypt {} failed.", selfname).c_str());
         std::puts("[*] Press any key to continue...");
         wait_input();
         decsprx();
@@ -655,13 +653,13 @@ void chkeboot() {
     system("./tool/scetool --decrypt EBOOT.BIN EBOOT.ELF");
     if(!fs::exists("EBOOT.ELF ")) {
         std::puts("[^^!] Decrypt EBOOT.BIN failed.");
-        std::puts("[^^!] Decrypt %selfname% failed.");
+        std::puts(std::format("[^^!] Decrypt {} failed.", selfname).c_str());
         std::puts("[*] Press any key to continue...");
         wait_input();
         decsprx();
     }
     std::puts("[*] Start BruteForce Detecting Klicensee, please wait...");
-    system("./tool/klicencebruteforce -x self\%selfname% EBOOT.ELF ./data/keys>./tool/bruteforce.txt");
+    system(std::format("./tool/klicencebruteforce -x ./self/{} EBOOT.ELF ./data/keys>./tool/bruteforce.txt", selfname).c_str());
     if(fs::exists("EBOOT.ELF ")) {
         fs::remove("EBOOT.ELF");
     }
@@ -669,736 +667,525 @@ void chkeboot() {
     std::string bruteforceresult;
     if(bruteforceresult.substr(4,2)=="no") {
         std::puts("[^^!] Cannot find Klicensee, BruteForce Detecting failed.");
-        std::puts("[^^!] Decrypt %selfname% failed.");
+        std::puts(std::format("[^^!] Decrypt {} failed.", selfname).c_str());
         std::puts("[*] Press any key to continue...");
         wait_input();
         decsprx();
      } else {
-        //foundkliceboot();
+        foundkliceboot();
      }
 }
 
 void kliclist() {
-    std::string klicensee="NONE";
+    klicensee="NONE";
     //for /f "tokens=1,*" %%i in (tool\kliclist.txt) do if "%%i"=="%contentid%" set klicensee=%%j
     //for /l %%a in (0 1 99) do if not "!klicensee:~%%a,1!"=="" set /a kliclen=%%a+1
     size_t kliclen{ 0 };
 
     if (kliclen != 32) {
-        //bruteforcepool();
+        bruteforcepool();
     } else {
-        std::puts("[*] Found ContentID in EBOOT.BIN: %contentid%");
-        std::puts("[*] Found Klicensee in Klic List: %klicensee%");
-        //klicresign();
+        std::puts(std::format("[*] Found ContentID in EBOOT.BIN: {}", contentid).c_str());
+        std::puts(std::format("[*] Found Klicensee in Klic List: {}", klicensee).c_str());
+        klicresign();
     }
 }
-/*
+
+void processKlicList(const std::string& contentId, std::string& kLicensee, int& kLicLen) {
+    std::ifstream file("./tool/kliclist.txt");
+    if (!file.is_open()) {
+        // Handle file not found or other error
+        return;
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::string token;
+        if (std::getline(iss, token, ' ')) {
+            std::string klicToken;
+            std::getline(iss, klicToken);
+
+            if (token == contentId) {
+                kLicensee = klicToken;
+            }
+        }
+    }
+    kLicLen = kLicensee.length();
+}
+
 void chklist() {
     if(!fs::exists("./tool/kliclist.txt")) {
         chkpool();
     }
     klicensee="NONE";
-    for /f "tokens=1,*" %%i in (tool\kliclist.txt) do if "%%i"=="%contentid%" set klicensee=%%j
-    for /l %%a in (0 1 99) do if not "!klicensee:~%%a,1!"=="" set /a kliclen=%%a+1
-    if %kliclen% NEQ 32 (
+    int kLicLen;
+
+    processKlicList(contentid, klicensee, kLicLen);
+
+    if (kLicLen != 32) {
         chkpool();
-    ) else (
-        std::puts("[*] Found Klicensee in Klic List: %klicensee%");
+    } else {
+        std::cout << "[*] Found Klicensee in Klic List: " << klicensee << std::endl;
         decklic();
-    )
+    }
 }
 
-
 void chkpool() {
-    if(!fs::exists("./tool/klicpool.txt")) {
+   if (!fs::exists("./tool/klicpool.txt")) {
         chkeboot();
     }
-    tool\klicencebruteforce -x self\%selfname% tool\klicpool.txt data\keys>tool\bruteforce.txt
-    for /f "skip=3 tokens=1,*" %%i in (tool\bruteforce.txt) do if "%%i"=="[*]" set bruteforceresult=%%j
-    if %bruteforceresult:~4,2%==no (
-        chkeboot();
-    )
-    set klicensee=%bruteforceresult:~24,32%
-    tool\Rtlen %bruteforceresult%>tool\resultlen.txt
-    set /p resultlen=<tool\resultlen.txt
-    if %resultlen%==43 set klicensee=%bruteforceresult:~11,32%
-    std::puts("[*] Found Klicensee in Klic Pool: %klicensee%");
-    std::puts("%contentid% %klicensee%>>tool\kliclist.txt");
-    decklic();
+
+    system(("./tool/klicencebruteforce -x self/" + selfname + " ./tool/klicpool.txt data/keys > tool\\bruteforce.txt").c_str());
+
+    std::ifstream bruteforceFile("./tool/bruteforce.txt");
+    if (!bruteforceFile.is_open()) {
+        // Handle file not found or other error
+        return;
+    }
+
+    std::string line;
+    while (std::getline(bruteforceFile, line)) {
+        if (line.substr(0, 4) == "[*]") {
+            bruteforceresult = line.substr(24, 32);
+
+            std::ofstream resultLenFile("./tool/resultlen.txt");
+            resultLenFile << bruteforceresult;
+            resultLenFile.close();
+
+            std::ifstream resultLenFileRead("./tool/resultlen.txt");
+            int resultlen;
+            resultLenFileRead >> resultlen;
+            resultLenFileRead.close();
+
+            if (resultlen == 43) {
+                bruteforceresult = line.substr(11, 32);
+            }
+
+            std::cout << "[*] Found Klicensee in Klic Pool: " << bruteforceresult << std::endl;
+
+            // Write contentid and klicensee to kliclist.txt
+            std::ofstream klicListFile("./tool/kliclist.txt", std::ios_base::app);
+            if (klicListFile.is_open()) {
+                klicListFile << contentid << " " << bruteforceresult << std::endl;
+                klicListFile.close();
+            } else {
+                // Handle error opening kliclist.txt
+            }
+
+            decklic();
+            break; // Exit loop after processing the first [*] line
+        }
+    }
 }
 
 void foundkliceboot() {
-    set klicensee=%bruteforceresult:~24,32%
-    ./tool/Rtlen %bruteforceresult%>./tool/resultlen.txt
-    set /p resultlen=<./tool/resultlen.txt
-    if %resultlen%==43 set klicensee=%bruteforceresult:~11,32%
-    std::puts("[*] Found Klicensee in EBOOT.BIN: %klicensee%");
-    std::puts("%klicensee%>>./tool/klicpool.txt");
-    std::puts("%contentid% %klicensee%>>./tool/kliclist.txt");
-}
+    klicensee = bruteforceresult.substr(24, 32);
 
+    // Execute tool/Rtlen with bruteforceResult as argument and store the output in resultlen.txt
+    std::system(("./tool/Rtlen " + bruteforceresult + " > ./tool/resultlen.txt").c_str());
+
+    std::ifstream resultLenFile("./tool/resultlen.txt");
+    if (resultLenFile.is_open()) {
+        int resultLen;
+        if (resultLenFile >> resultLen) {
+            if (resultLen == 43) {
+                klicensee = bruteforceresult.substr(11, 32);
+            }
+        }
+        resultLenFile.close();
+    }
+
+    // Output found Klicensee in EBOOT.BIN
+    std::cout << "[*] Found Klicensee in EBOOT.BIN: " << klicensee << std::endl;
+
+    // Append Klicensee to klicpool.txt
+    std::ofstream klicpoolFile("./tool/klicpool.txt", std::ios::app);
+    if (klicpoolFile.is_open()) {
+        klicpoolFile << klicensee << std::endl;
+        klicpoolFile.close();
+    }
+
+    // Append contentId and Klicensee to kliclist.txt
+    std::ofstream kliclistFile("./tool/kliclist.txt", std::ios::app);
+    if (kliclistFile.is_open()) {
+        kliclistFile << contentid << " " << klicensee << std::endl;
+        kliclistFile.close();
+    }
+}
 
 void decklic() {
-    ./tool/scetool.exe --np-klicensee %klicensee% --decrypt self\%selfname% self\%shortname%.%elfsuffix%>nul
-    if(!fs::exists("self\%shortname%.%elfsuffix% ")) {
-        std::puts("[^^!] Decrypt !selfname%count%! failed.");
-        std::puts("[*] Press any key to continue...");
+    std::string command = "./tool/scetool --np-klicensee " + klicensee + " --decrypt self/" + selfname + " self/" + shortname + "." + elfsuffix;
+    std::system(command.c_str());
+
+    if (!fs::exists("self/" + shortname + "." + elfsuffix)) {
+        std::cout << "[^^!] Decrypt " << selfname << " failed." << std::endl;
+        std::cout << "[*] Press any key to continue..." << std::endl;
         wait_input();
-    }
-    std::puts("[*] Decrypt file to %shortname%.%elfsuffix% successfully.");
-    std::puts("[*] Press any key to continue...");
-    wait_input();
-    decsprx();
-}
-
-void selfsel() {
-    selfsel="NONE";
-    set /p selfsel=[?] Enter SELF/SPRX file number to resign / A for All / B to Back:
-
-    if(selfsel=="NONE") {
-        selfcex();
-    }
-    if(selfsel=="A") {
-        selfall();
-    }
-    if(selfsel=="a") {
-        selfall();
-    }
-    if(selfsel=="B") {
-        mainmenu();
-    }
-    if(selfsel=="b") {
-        mainmenu();
-    }
-    if(selfsel > count) {
-        std::puts("[^^!] Invalid input, please enter again.");
-        std::puts("[*] Press any key to continue...");
+    } else {
+        std::cout << "[*] Decrypt file to " << shortname << "." << elfsuffix << " successfully." << std::endl;
+        std::cout << "[*] Press any key to continue..." << std::endl;
         wait_input();
-        selfsel();
+        decsprx();
     }
-    if(selfsel < 1) {
-        std::puts("[^^!] Invalid input, please enter again.");
-        std::puts("[*] Press any key to continue...");
-        wait_input();
-        selfsel();
-    }
-
-    set selfname=!a%selfsel%!
-    set shortname=%selfname:~0,-5%
-    set sufname=%selfname:~-4,4%
-    if %sufname%==self (
-        elfsuffix="elf";
-        baksuffix="bak";
-    )
-    if %sufname%==SELF (
-        elfsuffix="ELF";
-        baksuffix="BAK";
-    )
-    if %sufname%==sprx (
-        elfsuffix="prx";
-        baksuffix="bak";
-    )
-    if %sufname%==SPRX (
-        elfsuffix="PRX";
-        baksuffix="BAK";
-    )
-    if(fs::exists("self\%shortname%.%elfsuffix% ")) {
-        fs::remove("self\%shortname%.%elfsuffix%");
-    }
-    std::puts("[*] Decrypting %selfname%...");
-    ./tool/scetool --decrypt self\%selfname% self\%shortname%.%elfsuffix%>nul
-    if(!fs::exists("self\%shortname%.%elfsuffix% ")) {
-        std::puts("[^^!] Decrypt %selfname% failed.");
-        std::puts("[^^!] Resign aborted.");
-        std::puts("[*] Press any key to continue...");
-        wait_input();
-        selfcex();
-    }
-    if(fs::exists("self\%selfname%.%baksuffix% ")) {
-        fs::remove("self\%selfname%.%baksuffix%");
-    }
-    copy self\%selfname% self\%selfname%.%baksuffix%>nul
-    std::puts("[*] Patching %shortname%.%elfsuffix%...");
-    fix_elf(self\%shortname%.%elfsuffix%, %elfsdk%);
-    std::puts("[*] Encrypting %shortname%.%elfsuffix%...");
-    if %capflagswitch%==TRUE (
-        tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-cap-flags=%selfcapflags% --encrypt self\%shortname%.%elfsuffix% self\%selfname%>nul
-    )
-    if %capflagswitch%==FALSE (
-        if %ctrlflagswitch%==FALSE (
-            tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --encrypt self\%shortname%.%elfsuffix% self\%selfname%>nul
-        )
-    )
-    if %capflagswitch%==FALSE (
-        if %ctrlflagswitch%==TRUE (
-            tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --encrypt self\%shortname%.%elfsuffix% self\%selfname%>nul
-        )
-    )
-    if(fs::exists("self\%shortname%.%elfsuffix% ")) {
-        fs::remove("self\%shortname%.%elfsuffix%");
-    }
-    std::puts("[*] Resign finished.");
-    std::puts("[*] Press any key to continue...");
-    wait_input();
-    selfcex();
-}
-
-
-void selfall() {
-    int count="0";
-    int error="0";
-    for /f %%f in (tool\selflist.txt) do (
-        count+=1;
-        set selfname%count%=%%f
-        set shortname%count%=!selfname%count%:~0,-5!
-        set sufname%count%=!selfname%count%:~-4,4!
-        if !sufname%count%!==self (
-            elfsuffix[count]="elf";
-            baksuffix[count]="bak";
-        )
-        if !sufname%count%!==SELF (
-            elfsuffix[count]="ELF";
-            baksuffix[count]="BAK";
-        )
-        if !sufname%count%!==sprx (
-            elfsuffix[count]="prx";
-            baksuffix[count]="bak";
-        )
-        if !sufname%count%!==SPRX (
-            elfsuffix[count]="PRX";
-            baksuffix[count]="BAK";
-        )
-        if(fs::exists("self\!shortname%count%!.!elfsuffix%count%! ")) {
-            fs::remove("self\!shortname%count%!.!elfsuffix%count%!");
-        )
-        std::puts("[*] Resigning !selfname%count%!...");
-        ./tool/scetool --decrypt self\!selfname%count%! self\!shortname%count%!.!elfsuffix%count%!>nul
-        if(!fs::exists("self\!shortname%count%!.!elfsuffix%count%! ")) {
-            std::puts("[^^!] Decrypt !selfname%count%! failed.");
-            std::puts("[^^!] Resign !selfname%count%! aborted.");
-            error+=1;
-        }
-        if(fs::exists("self\!shortname%count%!.!elfsuffix%count%! ")) {
-            if(fs::exists("self\!selfname%count%!.!baksuffix%count%! ")) {
-                fs::remove("self\!selfname%count%!.!baksuffix%count%!");
-            }
-            copy self\!selfname%count%! self\!selfname%count%!.!baksuffix%count%!>nul
-            fix_elf("self\!shortname%count%!.!elfsuffix%count%!", elfsdk);
-            if %capflagswitch%==TRUE (
-                tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-cap-flags=%selfcapflags% --encrypt self\!shortname%count%!.!elfsuffix%count%! self\!selfname%count%!>nul
-            )
-            if %capflagswitch%==FALSE (
-            if %ctrlflagswitch%==FALSE (
-                tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --encrypt self\!shortname%count%!.!elfsuffix%count%! self\!selfname%count%!>nul
-            )
-            )
-            if %capflagswitch%==FALSE (
-            if %ctrlflagswitch%==TRUE (
-                tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --encrypt self\!shortname%count%!.!elfsuffix%count%! self\!selfname%count%!>nul
-            )
-            )
-            if(fs::exists("self\!shortname%count%!.!elfsuffix%count%! ")) {
-                fs::remove("self\!shortname%count%!.!elfsuffix%count%!");
-            }
-            std::puts("[*] Resign !selfname%count%! finished.");
-        }
-    }
-    if %error%==0 (
-        std::puts("[*] Resign all SELF/SPRX files successfully.");
-    ) else (
-        std::puts("[^^!] Resign all SELF/SPRX files finished, %error% file^(s^) failed.");
-    )
-    std::puts("[*] Press any key to continue...");
-    wait_input();
 }
 
 void bruteforcepool() {
-    if(!fs::exists("tool\klicpool.txt (goto klicdec")) {
-    set /p usesprx=<tool\selflist.txt
-    tool\klicencebruteforce -x self\%usesprx% tool\klicpool.txt data\keys>tool\bruteforce.txt
-    for /f "skip=3 tokens=1,*" %%i in (tool\bruteforce.txt) do if "%%i"=="[*]" set bruteforceresult=%%j
-    if %bruteforceresult:~4,2%==no (goto klicdec)
-    set klicensee=%bruteforceresult:~24,32%
-    tool\Rtlen %bruteforceresult%>tool\resultlen.txt
-    set /p resultlen=<tool\resultlen.txt
-    if %resultlen%==43 set klicensee=%bruteforceresult:~11,32%
-    std::puts("[*] Found ContentID in EBOOT.BIN: %contentid%");
-    std::puts("[*] Found Klicensee in Klic Pool: %klicensee%");
-    std::puts("%contentid% %klicensee%>>tool\kliclist.txt");
-    klicresign();
-}
+    if (!fs::exists("./tool/klicpool.txt")) {
+        klicdec();
+        return;
+    }
 
+    std::string usesprx;
+    std::ifstream selflistFile("./tool/selflist.txt");
+    if (selflistFile.is_open()) {
+        std::getline(selflistFile, usesprx);
+        selflistFile.close();
+    } else {
+        // Handle error when selflist.txt cannot be opened
+        return;
+    }
+
+    std::system(("./tool/klicencebruteforce -x self/" + usesprx + " ./tool/klicpool.txt data/keys > tool/bruteforce.txt").c_str());
+
+    std::ifstream bruteforceFile("./tool/bruteforce.txt");
+    if (bruteforceFile.is_open()) {
+        std::string line;
+        while (std::getline(bruteforceFile, line)) {
+            if (line.find("[*]") == 0) {
+                std::string bruteforceresult = line;
+                if (bruteforceresult.substr(4, 2) == "no") {
+                    klicdec();
+                    return;
+                }
+
+                std::string kLicensee = bruteforceresult.substr(24, 32);
+                std::system(("./tool/Rtlen " + bruteforceresult + " > ./tool/resultlen.txt").c_str());
+
+                std::ifstream resultLenFile("./tool/resultlen.txt");
+                if (resultLenFile.is_open()) {
+                    int resultLen;
+                    if (resultLenFile >> resultLen) {
+                        if (resultLen == 43) {
+                            kLicensee = bruteforceresult.substr(11, 32);
+                        }
+                    }
+                    resultLenFile.close();
+                }
+
+                std::cout << "[*] Found ContentID in EBOOT.BIN: " << contentid << std::endl;
+                std::cout << "[*] Found Klicensee in Klic Pool: " << kLicensee << std::endl;
+
+                std::ofstream kliclistFile("./tool/kliclist.txt", std::ios::app);
+                if (kliclistFile.is_open()) {
+                    kliclistFile << contentid << " " << kLicensee << std::endl;
+                    kliclistFile.close();
+                }
+
+                klicresign();
+                return;
+            }
+        }
+        bruteforceFile.close();
+    }
+}
 
 void klicdec() {
-    if(fs::exists("EBOOT.ELF")) {
+    if (fs::exists("EBOOT.ELF")) {
         fs::remove("EBOOT.ELF");
     }
-    system("./tool/scetool.exe --decrypt EBOOT.BIN EBOOT.ELF");
-    if(!fs::exists("EBOOT.ELF ")) {
-        std::puts("[^^!] Decrypt EBOOT.BIN failed.");
-        std::puts("[^^!] Resign aborted.");
-        std::puts("[*] Press any key to continue...");
+
+    std::system("./tool/scetool --decrypt EBOOT.BIN EBOOT.ELF");
+
+    if (!fs::exists("EBOOT.ELF")) {
+        std::cout << "[^^!] Decrypt EBOOT.BIN failed." << std::endl;
+        std::cout << "[^^!] Resign aborted." << std::endl;
+        std::cout << "[*] Press any key to continue..." << std::endl;
         wait_input();
         kliccex();
     }
-}
-
-
-void bruteforceeboot() {
-    std::puts("[*] Start BruteForce Detecting Klicensee, please wait...");
-    std::puts("[*] Found ContentID in EBOOT.BIN: %contentid%");
-    set /p usesprx=<tool\selflist.txt
-    tool\klicencebruteforce -x self\%usesprx% EBOOT.ELF data\keys>tool\bruteforce.txt
-    if(fs::exists("EBOOT.ELF ")) {
-        fs::remove("EBOOT.ELF");
-    }
-    for /f "skip=3 tokens=1,*" %%i in (tool\bruteforce.txt) do if "%%i"=="[*]" set bruteforceresult=%%j
-    if %bruteforceresult:~4,2%==no (
-        std::puts("[^^!] Cannot find Klicensee, BruteForce Detecting failed.");
-        std::puts("[^^!] Resign aborted.");
-        std::puts("[*] Press any key to continue...");
-        wait_input();
-        kliccex();
-    ) else (
-        klicfoundeboot();
-    )
-}
-
-
-void klicfoundeboot() {
-    set klicensee=%bruteforceresult:~24,32%
-    tool\Rtlen %bruteforceresult%>tool\resultlen.txt
-    set /p resultlen=<tool\resultlen.txt
-    if %resultlen%==43 set klicensee=%bruteforceresult:~11,32%
-    std::puts("[*] Found Klicensee in EBOOT.BIN: %klicensee%");
-    std::puts("%klicensee%>>tool\klicpool.txt");
-    std::puts("%contentid% %klicensee%>>tool\kliclist.txt");
 }
 
 void klicresign() {
-    set /a count=0
-    set /a error=0
-    for /f %%f in (tool\selflist.txt) do (
-    set /a count+=1
-    set selfname%count%=%%f
-    set shortname%count%=!selfname%count%:~0,-5!
-    set sufname%count%=!selfname%count%:~-4,4!
-    if !sufname%count%!==self (
-    set elfsuffix%count%=elf
-    set baksuffix%count%=bak
-    )
-    if !sufname%count%!==SELF (
-    set elfsuffix%count%=ELF
-    set baksuffix%count%=BAK
-    )
-    if !sufname%count%!==sprx (
-    set elfsuffix%count%=prx
-    set baksuffix%count%=bak
-    )
-    if !sufname%count%!==SPRX (
-    set elfsuffix%count%=PRX
-    set baksuffix%count%=BAK
-    )
-    set npapptype%count%=SPRX
-    if %contentid:~7,1%==B (set npapptype%count%=USPRX)
-    if(fs::exists("self\!shortname%count%!.!elfsuffix%count%!") { 
-        fs::remove("self\!shortname%count%!.!elfsuffix%count%!");
+    int count = 0;
+    int error = 0;
+
+    std::ifstream selflistFile("./tool/selflist.txt");
+    if (selflistFile.is_open()) {
+        std::string selfname, shortname, sufname, elfsuffix, baksuffix, npapptype;
+
+        while (selflistFile >> selfname) {
+            count++;
+
+            shortname = selfname.substr(0, selfname.size() - 5);
+            sufname = selfname.substr(selfname.size() - 4, 4);
+
+            if (sufname == "self" || sufname == "SELF") {
+                elfsuffix = "elf";
+                baksuffix = "bak";
+            } else if (sufname == "sprx" || sufname == "SPRX") {
+                elfsuffix = "prx";
+                baksuffix = "bak";
+            }
+
+            npapptype = "SPRX";
+            if (contentid.substr(7, 1) == "B") {
+                npapptype = "USPRX";
+            }
+
+            std::string selfPath = "self/" + shortname + "." + elfsuffix;
+
+            if (fs::exists(selfPath)) {
+                fs::remove(selfPath.c_str());
+            }
+
+            std::cout << "[*] Resigning " << selfname << "..." << std::endl;
+
+            std::string decryptCommand = "./tool/scetool --np-klicensee " + klicensee + " --decrypt self/" + selfname + " self/" + shortname + "." + elfsuffix + " > nul";
+            std::system(decryptCommand.c_str());
+
+            if (!fs::exists(selfPath)) {
+                std::cout << "[^^!] Decrypt " << selfname << " failed." << std::endl;
+                std::cout << "[^^!] Resign " << selfname << " aborted." << std::endl;
+                error++;
+            } else {
+                if (fs::exists("self/" + selfname + "." + baksuffix)) {
+                    fs::remove(("self/" + selfname + "." + baksuffix).c_str());
+                }
+
+                std::string backupCommand = "copy self/" + selfname + " self/" + selfname + "." + baksuffix + " > nul";
+                std::system(backupCommand.c_str());
+
+                fix_elf("self/" + shortname + "." + elfsuffix, elfsdk);
+
+                std::string scetoolCommand;
+                if (ctrlflagswitch == "FALSE") {
+                    scetoolCommand = "./tool/scetool -v --sce-type=SELF --compress-data=" + compress + " --skip-sections=TRUE --key-revision=" + keyrev + " --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=" + fwver + " --np-license-type=FREE --np-content-id=" + contentid + " --np-app-type=" + npapptype + " --np-klicensee=" + klicensee + " --np-real-fname=" + selfname + " --encrypt self/" + shortname + "." + elfsuffix + " self/" + selfname + " > nul";
+                } else {
+                    scetoolCommand = "./tool/scetool -v --sce-type=SELF --compress-data=" + compress + " --skip-sections=TRUE --key-revision=" + keyrev + " --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=" + fwver + " --self-ctrl-flags=" + selfctrlflags + " --np-license-type=FREE --np-content-id=" + contentid + " --np-app-type=" + npapptype + " --np-klicensee=" + klicensee + " --np-real-fname=" + selfname + " --encrypt self/" + shortname + "." + elfsuffix + " self/" + selfname + " > nul";
+                }
+
+                std::system(scetoolCommand.c_str());
+
+                if (fs::exists("self/" + shortname + "." + elfsuffix)) {
+                    fs::remove(("self/" + shortname + "." + elfsuffix).c_str());
+                }
+
+                std::cout << "[*] Resign " << selfname << " finished." << std::endl;
+            }
+        }
+
+        selflistFile.close();
     }
-    std::puts("[*] Resigning !selfname%count%!...");
-    tool\scetool.exe --np-klicensee %klicensee% --decrypt self\!selfname%count%! self\!shortname%count%!.!elfsuffix%count%!>nul
-    if(!fs::exists("self\!shortname%count%!.!elfsuffix%count%! ")) {
-    std::puts("[^^!] Decrypt !selfname%count%! failed.");
-    std::puts("[^^!] Resign !selfname%count%! aborted.");
-    set /a error+=1
-    )
-    if(fs::exists("self\!shortname%count%!.!elfsuffix%count%! ")) {
-    if(fs::exists("self\!selfname%count%!.!baksuffix%count%!")) {
-        fs::remove("self\!selfname%count%!.!baksuffix%count%!");
+
+    if (error == 0) {
+        std::cout << "[*] Resign all SELF/SPRX files successfully." << std::endl;
+    } else {
+        std::cout << "[^^!] Resign all SELF/SPRX files finished, " << error << " file(s) failed." << std::endl;
     }
-    copy self\!selfname%count%! self\!selfname%count%!.!baksuffix%count%!>nul
-    fix_elf("self\!shortname%count%!.!elfsuffix%count%!", elfsdk);
-    if %ctrlflagswitch%==FALSE (
-    tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=!npapptype%count%! --np-klicensee=%klicensee% --np-real-fname=!selfname%count%! --encrypt self\!shortname%count%!.!elfsuffix%count%! self\!selfname%count%!>nul
-    )
-    if %ctrlflagswitch%==TRUE (
-    tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=!npapptype%count%! --np-klicensee=%klicensee% --np-real-fname=!selfname%count%! --encrypt self\!shortname%count%!.!elfsuffix%count%! self\!selfname%count%!>nul
-    )
-    if(fs::exists("self\!shortname%count%!.!elfsuffix%count%!")){
-        fs::remove("self\!shortname%count%!.!elfsuffix%count%!");
-    }
-    std::puts("[*] Resign !selfname%count%! finished.");
-    )
-    )
-    if %error%==0 (
-    std::puts("[*] Resign all SELF/SPRX files successfully.");
-    ) else (
-    std::puts("[^^!] Resign all SELF/SPRX files finished, %error% file^(s^) failed.");
-    )
-    std::puts("[*] Press any key to continue...");
+    std::cout << "[*] Press any key to continue..." << std::endl;
     wait_input();
 }
 
 void custnondrm() {
-    cd self
-    if(fs::exists("..\tool\selflist.txt")){
-        fs::remove("..\tool\selflist.txt");
+    fs::current_path("self");
+
+    if (fs::exists("../tool/selflist.txt")) {
+        fs::remove("../tool/selflist.txt");
     }
-    if(fs::exists("*.elf")){
-        dir *.elf /b >..\tool\selflist.txt
+
+    std::system("ls *.elf /b > ./tool/selflist.txt");
+    std::system("ls *.prx /b >> ./tool/selflist.txt");
+
+    fs::current_path("..");
+
+    int count = 0;
+    std::string fileName;
+
+    std::cout << "===============================================================================" << std::endl;
+    std::cout << " ELF/PRX Files List" << std::endl;
+    std::cout << "===============================================================================" << std::endl;
+
+    std::ifstream selfListFile("tool/selflist.txt");
+    if (selfListFile.is_open()) {
+        while (selfListFile >> fileName) {
+            count++;
+            std::cout << " " << count << ". " << fileName << std::endl;
+        }
+        selfListFile.close();
+    } else {
+        std::cout << " No ELF/PRX is Found." << std::endl;
     }
-    if(fs::exists("*.prx")){
-        dir *.prx /b >>..\tool\selflist.txt
-    }
-    cd..
-    set /a count=0
-    cls
-    std::puts("===============================================================================");
-    std::puts(" ELF/PRX Files List");
-    std::puts("===============================================================================");
-    if(fs::exists("tool\selflist.txt ")) {
-    for /f %%f in (tool\selflist.txt) do (
-    set /a count+=1
-    set a!count!=%%f
-    if count NEQ 0 (std::puts(" !count!. %%f )");
-    )
-    ) else (std::puts(" No ELF/PRX is Found.)");
-    std::puts("===============================================================================");
-    if !count!==0 (
+
+    std::cout << "===============================================================================" << std::endl;
+
+    if (count == 0) {
         wait_input();
-    )
-}
-
-
-void elfselnondrm() {
-    set selfsel=NONE
-    set /p selfsel=[?] Enter ELF/PRX file number to resign / B to Back:
-    if %selfsel%==NONE (goto custnondrm)
-    if %selfsel%==B (goto mainmenu)
-    if %selfsel%==b (goto mainmenu)
-    if %selfsel% GTR !count! (
-    std::puts("[^^!] Invalid input, please enter again.");
-    std::puts("[*] Press any key to continue...");
-    wait_input();
-    elfselnondrm();
-    )
-    if %selfsel% LSS 1 (
-    std::puts("[^^!] Invalid input, please enter again.");
-    std::puts("[*] Press any key to continue...");
-    wait_input();
-    elfselnondrm();
-    )
-    set elfname=!a%selfsel%!
-    set shortname=%elfname:~0,-4%
-    set sufname=%elfname:~-3,3%
-    if %sufname%==elf (
-    set selfsuffix=self
-    set baksuffix=bak
-    )
-    if %sufname%==ELF (
-    set selfsuffix=SELF
-    set baksuffix=BAK
-    )
-    if %sufname%==prx (
-    set selfsuffix=sprx
-    set baksuffix=bak
-    )
-    if %sufname%==PRX (
-    set selfsuffix=SPRX
-    set baksuffix=BAK
-    )
-    if(fs::exists("self\%shortname%.%selfsuffix%")) {
-        fs::remove("self\%shortname%.%selfsuffix%");
     }
-    std::puts("[*] Patching %elfname%...");
-    fix_elf("self\%elfname%", elfsdk);
-    std::puts("[*] Encrypting %elfname%...");
-    if %capflagswitch%==TRUE (
-    tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-cap-flags=%selfcapflags% --encrypt self\%elfname% self\%shortname%.%selfsuffix%>nul
-    )
-    if %capflagswitch%==FALSE (
-    if %ctrlflagswitch%==FALSE (
-    tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --encrypt self\%elfname% self\%shortname%.%selfsuffix%>nul
-    )
-    )
-    if %capflagswitch%==FALSE (
-    if %ctrlflagswitch%==TRUE (
-    tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-vendor-id=01000002 --self-type=APP --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --encrypt self\%elfname% self\%shortname%.%selfsuffix%>nul
-    )
-    )
-    std::puts("[*] Custom sign finished.");
-    std::puts("[*] Press any key to continue...");
-    wait_input();
-    custnondrm();
 }
-
 
 void custnpdrm() {
-    if %output%==4xxode (
-    std::puts("[^^!] NPDRM Resign is inapplicable for ODE Output.");
-    wait_input();
-    return;
-    )
-    cd self
-    if(fs::exists("./tool/selflist.txt")) {
-        fs::remove("..\tool\selflist.txt");
-    }
-    if(fs::exists("*.elf"){
-        dir *.elf /b >..\tool\selflist.txt
-    }
-    if(fs::exists("*.prx")){
-        dir *.prx /b >>..\tool\selflist.txt
-    }
-    cd..
-    set /a count=0
-    cls
-    std::puts("===============================================================================");
-    std::puts(" ELF/PRX Files List");
-    std::puts("===============================================================================");
-    if(fs::exists("tool/selflist.txt ")) {
-    for /f %%f in (tool\selflist.txt) do (
-    set /a count+=1
-    set a!count!=%%f
-    if count NEQ 0 (std::puts(" !count!. %%f )");
-    )
-    ) else (std::puts(" No ELF/PRX is Found.)");
-    std::puts("===============================================================================");
-    if !count!==0 (
-    wait_input();
-    )
-}
-
-
-void elfselnpdrm() {
-    set selfsel=NONE
-    set /p selfsel=[?] Enter ELF/PRX file number to resign / B to Back:
-    if %selfsel%==NONE (
-        custnpdrm();
-    )
-    if %selfsel%==B (
-        return;
-    )
-    if %selfsel%==b (
-        return;
-    )
-    if %selfsel% GTR !count! (
-    std::puts("[^^!] Invalid input, please enter again.");
-    std::puts("[*] Press any key to continue...");
-    wait_input();
-    elfselnpdrm();
-    )
-    if %selfsel% LSS 1 (
-    std::puts("[^^!] Invalid input, please enter again.");
-    std::puts("[*] Press any key to continue...");
-    wait_input();
-    elfselnpdrm();
-    )
-    set elfname=!a%selfsel%!
-    set shortname=%elfname:~0,-4%
-    set sufname=%elfname:~-3,3%
-    if %sufname%==elf (
-    set selfsuffix=self
-    set baksuffix=bak
-    )
-    if %sufname%==ELF (
-    set selfsuffix=SELF
-    set baksuffix=BAK
-    )
-    if %sufname%==prx (
-    set selfsuffix=sprx
-    set baksuffix=bak
-    )
-    if %sufname%==PRX (
-    set selfsuffix=SPRX
-    set baksuffix=BAK
-    )
-}
-
-
-void customcid() {
-    set customcid=NONE
-    std::puts("[*] Please follow this sample ContentID:JP9000-NPJA00001_00-0000000000000000");
-    set /p customcid=[?] Enter custom ContentID / A to Abort:
-    if %customcid%==NONE (
-        customcid();
-    )
-    if %customcid%==A (
-        custnpdrm();
-    )
-    if %customcid%==a (
-        custnpdrm();
-    )
-    set cidlength=0
-    for /l %%a in (0 1 99) do if not "!customcid:~%%a,1!"=="" set /a cidlength=%%a+1
-    if %cidlength% NEQ 36 (
-    std::puts("[^^!] Invalid ContentID format, please enter following the sample ContentID.");
-    std::puts("[*] Press any key to continue...");
-    wait_input();
-    customcid();
-    )
-    if %customcid:~6,1% NEQ - (
-    std::puts("[^^!] Invalid ContentID format, please enter following the sample ContentID.");
-    std::puts("[*] Press any key to continue...");
-    wait_input();
-    customcid();
-    )
-    if %customcid:~16,4% NEQ _00- (
-    std::puts("[^^!] Invalid ContentID format, please enter following the sample ContentID.");
-    std::puts("[*] Press any key to continue...");
-    wait_input();
-    customcid();
-    )
-    set contentid=%customcid%
-}
-
-
-void customklic() {
-    set klicensee=NONE
-    std::puts("[*] Please follow this KLicensee sample:00000000000000000000000000000000");
-    set /p klicensee=[?] Please enter KLicensee / A to Abort:
-    if %klicensee%==NONE (
-        customklic();
-    )
-    if %klicensee%==A (
-        custnpdrm();
-    )
-    if %klicensee%==a (
-        custnpdrm();
-    )
-    set kliclen=0
-    for /l %%a in (0 1 99) do if not "!klicensee:~%%a,1!"=="" set /a kliclen=%%a+1
-    if %kliclen% NEQ 32 (
-        std::puts("[*] Invalid Klicensee format, please enter following the KLicensee sample.");
-        std::puts("[*] Press any key to continue...");
+    if (output == "4xxode") {
+        std::cout << "[^^!] NPDRM Resign is inapplicable for ODE Output." << std::endl;
         wait_input();
-        customklic();
-    )
-    set npapptype=SPRX
-    if %contentid:~7,1%==B (
-        set npapptype=USPRX
-    )
-    if(fs::exists("self\%shortname%.%selfsuffix% ")) {
-        fs::remove("self\%shortname%.%selfsuffix%");
-    )
-    std::puts("[*] Patching %elfname%...");
-    fix_elf("self\%elfname%", elfsdk);
-    std::puts("[*] Encrypting %elfname%...");
-    if %ctrlflagswitch%==FALSE (
-        tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=%npapptype% --np-klicensee=%klicensee% --np-real-fname=%shortname%.%selfsuffix% --encrypt self\%elfname% self\%shortname%.%selfsuffix%>nul
-    )
-    if %ctrlflagswitch%==TRUE (
-        tool\scetool.exe -v --sce-type=SELF --compress-data=%compress% --skip-sections=TRUE --key-revision=%keyrev% --self-auth-id=1010000001000003 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-app-version=0001000000000000 --self-fw-version=%fwver% --self-ctrl-flags=%selfctrlflags% --np-license-type=FREE --np-content-id=%contentid% --np-app-type=%npapptype% --np-klicensee=%klicensee% --np-real-fname=%shortname%.%selfsuffix% --encrypt self\%elfname% self\%shortname%.%selfsuffix%>nul
-    )
-    std::puts("[*] Custom sign finished.");
-    std::puts("[*] Press any key to continue...");
-    wait_input();
-}
+        return;
+    }
 
+    fs::current_path("self");
+
+    if (fs::exists("../tool/selflist.txt")) {
+        fs::remove("../tool/selflist.txt");
+    }
+
+    std::system("ls *.elf >../tool/selflist.txt");
+    std::system("ls *.prx >>../tool/selflist.txt");
+
+    fs::current_path("..");
+
+    int count = 0;
+    std::string fileName;
+
+    std::cout << "===============================================================================" << std::endl;
+    std::cout << " ELF/PRX Files List" << std::endl;
+    std::cout << "===============================================================================" << std::endl;
+
+    std::ifstream selfListFile("./tool/selflist.txt");
+    if (selfListFile.is_open()) {
+        while (selfListFile >> fileName) {
+            count++;
+            std::cout << " " << count << ". " << fileName << std::endl;
+        }
+        selfListFile.close();
+    } else {
+        std::cout << " No ELF/PRX is Found." << std::endl;
+    }
+
+    std::cout << "===============================================================================" << std::endl;
+
+    if (count == 0) {
+        wait_input();
+    }
+}
 
 void decfself() {
-    if(!fs::exists("EBOOT.BIN ")) {
-        std::puts("[^^!] EBOOT.BIN cannot be found.");
-        std::puts("[^^!] Decrypt aborted.");
-        std::puts("[*] Press any key to continue...");
+    if (!fs::exists("EBOOT.BIN")) {
+        std::cout << "[^^!] EBOOT.BIN cannot be found." << std::endl;
+        std::cout << "[^^!] Decrypt aborted." << std::endl;
+        std::cout << "[*] Press any key to continue..." << std::endl;
         wait_input();
         return;
     }
-    if(fs::exists("EBOOT.ELF ")) {
+
+    if (fs::exists("EBOOT.ELF")) {
         fs::remove("EBOOT.ELF");
     }
-    std::puts("[*] Decrypting EBOOT.BIN...");
-    system("./tool/unfself EBOOT.BIN EBOOT.ELF");
-    if(fs::exists("EBOOT.ELF ")) {
-        std::puts("[*] Decrypt finished.");
+
+    std::cout << "[*] Decrypting EBOOT.BIN..." << std::endl;
+    std::system("./tool/unfself EBOOT.BIN EBOOT.ELF");
+
+    if (fs::exists("EBOOT.ELF")) {
+        std::cout << "[*] Decrypt finished." << std::endl;
     } else {
-        std::puts("[^^!] Decrypt EBOOT.BIN failed.");
+        std::cout << "[^^!] Decrypt EBOOT.BIN failed." << std::endl;
     }
-    std::puts("[*] Press any key to continue...");
+
+    std::cout << "[*] Press any key to continue..." << std::endl;
     wait_input();
 }
 
-
 void discdex() {
-    autoresign="FALSE";
-    if(!fs::exists("EBOOT.BIN ")) {
-        if(!fs::exists("EBOOT.ELF ")) {
-            std::puts("[^^!] EBOOT.BIN/ELF cannot be found.");
-            std::puts("[^^!] Resign aborted.");
-            std::puts("[*] Press any key to continue...");
-            wait_input();
-            return;
-        }
-    }
-    if(!fs::exists("EBOOT.ELF ")) {
-        std::puts("[*] Decrypting EBOOT.BIN...");
-        tool\scetool.exe --decrypt EBOOT.BIN EBOOT.ELF>nul
-        autoresign="TRUE";
-    }
-    if(!fs::exists("EBOOT.ELF ")) {
-        std::puts("[^^!] Decrypt EBOOT.BIN failed.");
-        std::puts("[^^!] Resign aborted.");
-        std::puts("[*] Press any key to continue...");
+    std::string autoresign = "FALSE";
+
+    if (!fs::exists("EBOOT.BIN") && !fs::exists("EBOOT.ELF")) {
+        std::cout << "[^^!] EBOOT.BIN/ELF cannot be found." << std::endl;
+        std::cout << "[^^!] Resign aborted." << std::endl;
+        std::cout << "[*] Press any key to continue..." << std::endl;
         wait_input();
         return;
     }
-    if(fs::exists("EBOOT.BIN ")) {
-        if(fs::exists("EBOOT.BIN.BAK ")) {
+
+    if (!fs::exists("EBOOT.ELF")) {
+        std::cout << "[*] Decrypting EBOOT.BIN..." << std::endl;
+        std::system("./tool/scetool --decrypt EBOOT.BIN EBOOT.ELF >nul");
+        autoresign = "TRUE";
+    }
+
+    if (!fs::exists("EBOOT.ELF")) {
+        std::cout << "[^^!] Decrypt EBOOT.BIN failed." << std::endl;
+        std::cout << "[^^!] Resign aborted." << std::endl;
+        std::cout << "[*] Press any key to continue..." << std::endl;
+        wait_input();
+        return;
+    }
+
+    if (fs::exists("EBOOT.BIN")) {
+        if (fs::exists("EBOOT.BIN.BAK")) {
             fs::remove("EBOOT.BIN.BAK");
         }
         fs::rename("EBOOT.BIN", "EBOOT.BIN.BAK");
     }
-    std::puts("[*] Patching EBOOT.ELF...");
-    fix_elf("EBOOT.ELF");
-    std::puts("[*] Encrypting EBOOT.ELF...");
-    tool\make_fself EBOOT.ELF EBOOT.BIN>nul
-    if %autoresign%==TRUE (
+
+    std::cout << "[*] Patching EBOOT.ELF..." << std::endl;
+    fix_elf("EBOOT.ELF", elfsdk);
+
+    std::cout << "[*] Encrypting EBOOT.ELF..." << std::endl;
+    std::system("./tool/make_fself EBOOT.ELF EBOOT.BIN");
+
+    if (autoresign == "TRUE") {
         fs::remove("EBOOT.ELF");
-    )
-    std::puts("[*] Resign finished.");
-    std::puts("[*] Press any key to continue...");
+    }
+
+    std::cout << "[*] Resign finished." << std::endl;
+    std::cout << "[*] Press any key to continue..." << std::endl;
     wait_input();
 }
 
 void npdrmdex() {
-    autoresign="FALSE";
-    if(!fs::exists("EBOOT.BIN ")) {
-        if(!fs::exists("EBOOT.ELF ")) {
-            std::puts("[^^!] EBOOT.BIN/ELF cannot be found.");
-            std::puts("[^^!] Resign aborted.");
-            std::puts("[*] Press any key to continue...");
-            wait_input();
-            return;
-        }
-    }
-    if(!fs::exists("EBOOT.ELF ")) {
-        std::puts("[*] Decrypting EBOOT.BIN...");
-        tool\scetool.exe --decrypt EBOOT.BIN EBOOT.ELF>nul
-        autoresign="TRUE";
-    }
-    if(!fs::exists("EBOOT.ELF ")) {
-        std::puts("[^^!] Decrypt EBOOT.BIN failed.");
-        std::puts("[^^!] Resign aborted.");
-        std::puts("[*] Press any key to continue...");
+    std::string autoresign = "FALSE";
+
+    if (!fs::exists("EBOOT.BIN") && !fs::exists("EBOOT.ELF")) {
+        std::cout << "[^^!] EBOOT.BIN/ELF cannot be found." << std::endl;
+        std::cout << "[^^!] Resign aborted." << std::endl;
+        std::cout << "[*] Press any key to continue..." << std::endl;
         wait_input();
         return;
     }
-    if(fs::exists("EBOOT.BIN ")) {
-        if(fs::exists("EBOOT.BIN.BAK ")) {
+
+    if (!fs::exists("EBOOT.ELF")) {
+        std::cout << "[*] Decrypting EBOOT.BIN..." << std::endl;
+        std::system("./tool/scetool --decrypt EBOOT.BIN EBOOT.ELF");
+        autoresign = "TRUE";
+    }
+
+    if (!fs::exists("EBOOT.ELF")) {
+        std::cout << "[^^!] Decrypt EBOOT.BIN failed." << std::endl;
+        std::cout << "[^^!] Resign aborted." << std::endl;
+        std::cout << "[*] Press any key to continue..." << std::endl;
+        wait_input();
+        return;
+    }
+
+    if (fs::exists("EBOOT.BIN")) {
+        if (fs::exists("EBOOT.BIN.BAK")) {
             fs::remove("EBOOT.BIN.BAK");
         }
         fs::rename("EBOOT.BIN", "EBOOT.BIN.BAK");
     }
-    std::puts("[*] Patching EBOOT.ELF...");
-    fix_elf("EBOOT.ELF");
-    std::puts("[*] Encrypting EBOOT.ELF...");
-    tool\make_fself_npdrm EBOOT.ELF EBOOT.BIN>nul
-    if(autoresign=="TRUE") {
+
+    std::cout << "[*] Patching EBOOT.ELF..." << std::endl;
+    fix_elf("EBOOT.ELF", elfsdk);
+
+    std::cout << "[*] Encrypting EBOOT.ELF..." << std::endl;
+    std::system("./tool/make_fself_npdrm EBOOT.ELF EBOOT.BIN");
+
+    if (autoresign == "TRUE") {
         fs::remove("EBOOT.ELF");
     }
-    std::puts("[*] Resign finished.");
-    std::puts("[*] Press any key to continue...");
+
+    std::cout << "[*] Resign finished." << std::endl;
+    std::cout << "[*] Press any key to continue..." << std::endl;
     wait_input();
 }
-*/
 
 void outputoption() {
     if(output=="4xxstd") {
@@ -1459,12 +1246,10 @@ void outputoption() {
     }
 }
 
-
 void compressoption() {
     if(compress=="FALSE") enablecompressoption();
     if(compress=="TRUE") disablecompressoption();
 }
-
 
 void enablecompressoption() {
     std::string compressdata{ "NONE" };
@@ -1474,7 +1259,6 @@ void enablecompressoption() {
     if(compressdata=="Y") enablecompress();
     if(compressdata=="y") enablecompress();
 }
-
 
 void enablecompress() {
     compress="TRUE";
@@ -1489,7 +1273,6 @@ void disablecompressoption() {
     if(compressdata=="Y") disablecompress();
     if(compressdata=="y") disablecompress();
 }
-
 
 void disablecompress() {
     compress="FALSE";
