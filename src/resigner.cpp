@@ -2,13 +2,16 @@
 #include <cstdlib>
 #include <filesystem>
 #include <string>
-#include <format>
 #include <array>
+#include <format>
 
 #include "tool/FixELF.hpp"
 
 namespace fs = std::filesystem;
 
+//----------------------------------------
+// GLOBALS:
+//----------------------------------------
 static std::basic_string<char> selfctrlflags{ "4000000000000000000000000000000000000000000000000000000000000002" };
 static std::basic_string<char> selfcapflags{ "00000000000000000000000000000000000000000000003B0000000100040000" };
 static std::basic_string<char> output{ "4xxstd" };
@@ -21,7 +24,6 @@ static std::basic_string<char> capflagswitch{ "FALSE" };
 static std::basic_string<char> compress{ "TRUE" };
 static std::basic_string<char> compressmsg{ "[ON]" };
 static std::basic_string<char> contentid{ "NONE" };
-static std::basic_string<char> autoresign{ "TRUE" };
 static std::basic_string<char> selfname;
 static std::basic_string<char> sufname;
 static std::basic_string<char> shortname;
@@ -72,34 +74,49 @@ void npdrmcex();
 void customklic();
 void kliclist();
 
+//----------------------------------------
+//
+//----------------------------------------
 static inline void cls(){
     std::printf("\033[2J\033[1;1H"); // clear screen
     std::printf("\033[1;32m"); // make the output green
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 auto main() -> int {
     for(;;){
         mainmenu();
     }
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 static inline void wait_input(){
     while ((getchar()) != '\n'); // clear cin buffer
     std::cin.get();
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void createFolder() {
-    if(!fs::exists("self")) fs::create_directory("self");
-    if(!fs::exists("raps")) fs::create_directory("raps");
+    if(not fs::exists("self")) fs::create_directory("self");
+    if(not fs::exists("raps")) fs::create_directory("raps");
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void decself() {
-    if(!fs::exists("EBOOT.BIN")) {
+    if(not fs::exists("EBOOT.BIN")) {
         std::printf("[^^!] EBOOT.BIN cannot be found.\n"
-                           "[^^!] Decrypt aborted.\n"
-                           "[*] Press [ENTER] to continue...\n");
-                  wait_input();
-                  return;
+                    "[^^!] Decrypt aborted.\n"
+                    "[*] Press [ENTER] to continue...\n");
+        wait_input();
+        return;
     }
 
     if(fs::exists("EBOOT.ELF")) fs::remove("EBOOT.ELF");
@@ -116,10 +133,14 @@ void decself() {
     return;
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void disccex() {
-    bool autoresign{ false };
-    if(!fs::exists("EBOOT.BIN")) {
-        if(!fs::exists("EBOOT.ELF")) {
+    bool autoresign { false };
+
+    if(not fs::exists("EBOOT.BIN")) {
+        if(not fs::exists("EBOOT.ELF")) {
             std::printf("[^^!] EBOOT.BIN/ELF cannot be found.\n"
                         "[^^!] Resign aborted.\n"
                         "[*] Press [ENTER] to continue...\n");
@@ -134,7 +155,7 @@ void disccex() {
         autoresign=true;
     }
 
-    if(!fs::exists("EBOOT.ELF")) {
+    if(not fs::exists("EBOOT.ELF")) {
         std::printf("[^^!] Decrypt EBOOT.BIN failed.\n"
                     "[^^!] Resign aborted.\n"
                     "[*] Press [ENTER] to continue...\n");
@@ -167,21 +188,33 @@ void disccex() {
         }
     }
 
-    if (autoresign) fs::remove("EBOOT.ELF");
+    if (autoresign)
+      fs::remove("EBOOT.ELF");
+
     std::printf("[*] Resign finished.\n"
                 "[*] Press [ENTER] to continue...\n");
     wait_input();
     return;
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void mainmenu() {
     cls();
     createFolder();
     
-    if(fs::exists("tool/selfinfo.txt"))     fs::remove("tool/selfinfo.txt"  );
-    if(fs::exists("tool/selflist.txt"))     fs::remove("tool/selflist.txt"  );
-    if(fs::exists("tool/bruteforce.txt"))   fs::remove("tool/bruteforce.txt");
-    if(fs::exists("tool/resultlen.txt"))    fs::remove("tool/resultlen.txt" );
+    if(fs::exists("tool/selfinfo.txt"))
+      fs::remove("tool/selfinfo.txt"  );
+
+    if(fs::exists("tool/selflist.txt"))
+      fs::remove("tool/selflist.txt"  );
+
+    if(fs::exists("tool/bruteforce.txt"))
+      fs::remove("tool/bruteforce.txt");
+
+    if(fs::exists("tool/resultlen.txt"))
+      fs::remove("tool/resultlen.txt" );
     
     std::printf(" =============================================================================== \n"
                 "^|                       TrueAncestor SELF Resigner (Linux)                    ^|\n"
@@ -216,37 +249,79 @@ void mainmenu() {
     std::cin >> choice;
 
     switch(choice){
-        case 1:  decself(); break;
-        case 2:  disccex(); break;
-        case 3:  npdrmcex(); break;
-        case 4:  decsprx(); break;
-        case 5:  selfcex(); break;
-        case 6:  kliccex(); break;
-        case 7:  custnondrm(); break;
-        case 8:  custnpdrm(); break;
-        case 9:  decfself(); break;
-        case 10: discdex(); break;
-        case 11: npdrmdex(); break;
-        case 12 : outputoption(); break;
-        case 13 : compressoption(); break;
+        case 1:
+          decself();
+          break;
+
+        case 2:
+          disccex();
+          break;
+
+        case 3:
+          npdrmcex();
+          break;
+
+        case 4:
+          decsprx();
+          break;
+
+        case 5:
+          selfcex();
+          break;
+
+        case 6:
+          kliccex();
+          break;
+
+        case 7:
+          custnondrm();
+          break;
+
+        case 8:
+          custnpdrm();
+          break;
+
+        case 9:
+          decfself();
+          break;
+
+        case 10:
+          discdex();
+          break;
+
+        case 11:
+          npdrmdex();
+          break;
+
+        case 12:
+          outputoption();
+          break;
+
+        case 13:
+          compressoption();
+          break;
     }
 
-    std::cout << "Invalid input, please enter among (1-11/O/D/C/I/G/T)." << std::endl;
+    std::cout << "Invalid input, please enter among (1-13/O/D/C/I/G/T)." << std::endl;
     std::cout << "[*] Press [ENTER] to continue..." << std::endl;
     
     return;
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void npdrmcex() {
+    bool autoresign{ false };
+
     if (output == "4xxode") {
         std::printf("[^^!] NPDRM Resign is inapplicable for ODE Output.");
         wait_input();
         return;
     }
 
-    std::string autoresign="FALSE";
-    if(!fs::exists("EBOOT.BIN")) {
-        if (!fs::exists("EBOOT.ELF")) {
+    if(not fs::exists("EBOOT.BIN")) {
+        if (not fs::exists("EBOOT.ELF")) {
             std::puts("[*] EBOOT.BIN/ELF cannot be found.");
             std::puts("[*] Press any key to continue...");
             wait_input();
@@ -254,13 +329,13 @@ void npdrmcex() {
         }
     }
 
-    if (!fs::exists("EBOOT.ELF")) {
+    if (not fs::exists("EBOOT.ELF")) {
         std::puts("[*] Decrypting EBOOT.BIN...");
         system("./tool/scetool --decrypt EBOOT.BIN EBOOT.ELF");
-        autoresign="TRUE";
+        autoresign=true;
     }
 
-    if (!fs::exists("EBOOT.ELF")) {
+    if (not fs::exists("EBOOT.ELF")) {
         std::puts("[^^!] Decrypt EBOOT.BIN failed.");
         std::puts("[^^!] Resign aborted.)");
         std::puts("[*] Press any key to continue...");
@@ -342,7 +417,12 @@ void customcid() {
     contentid=s_customcid;
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void encrypt() {
+    bool autoresign{ false };
+
     if(fs::exists("EBOOT.BIN")) {
         if(fs::exists("EBOOT.BIN.BAK")) {
             fs::remove("EBOOT.BIN.BAK");
@@ -379,7 +459,7 @@ void encrypt() {
         )};
         system(command.c_str());
     }
-    if(autoresign=="TRUE") {
+    if(autoresign) {
         fs::remove("EBOOT.ELF");
     }
     std::puts("[*] Resign finished.");
@@ -1093,10 +1173,13 @@ void decfself() {
     wait_input();
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void discdex() {
-    std::string autoresign = "FALSE";
+    bool autoresign{ false };
 
-    if (!fs::exists("EBOOT.BIN") && !fs::exists("EBOOT.ELF")) {
+    if (not fs::exists("EBOOT.BIN") && !fs::exists("EBOOT.ELF")) {
         std::cout << "[^^!] EBOOT.BIN/ELF cannot be found." << std::endl;
         std::cout << "[^^!] Resign aborted." << std::endl;
         std::cout << "[*] Press any key to continue..." << std::endl;
@@ -1104,13 +1187,13 @@ void discdex() {
         return;
     }
 
-    if (!fs::exists("EBOOT.ELF")) {
+    if (not fs::exists("EBOOT.ELF")) {
         std::cout << "[*] Decrypting EBOOT.BIN..." << std::endl;
         std::system("./tool/scetool --decrypt EBOOT.BIN EBOOT.ELF >nul");
-        autoresign = "TRUE";
+        autoresign = true;
     }
 
-    if (!fs::exists("EBOOT.ELF")) {
+    if (not fs::exists("EBOOT.ELF")) {
         std::cout << "[^^!] Decrypt EBOOT.BIN failed." << std::endl;
         std::cout << "[^^!] Resign aborted." << std::endl;
         std::cout << "[*] Press any key to continue..." << std::endl;
@@ -1131,7 +1214,7 @@ void discdex() {
     std::cout << "[*] Encrypting EBOOT.ELF..." << std::endl;
     std::system("./tool/make_fself EBOOT.ELF EBOOT.BIN");
 
-    if (autoresign == "TRUE") {
+    if (autoresign) {
         fs::remove("EBOOT.ELF");
     }
 
@@ -1140,10 +1223,13 @@ void discdex() {
     wait_input();
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void npdrmdex() {
-    std::string autoresign = "FALSE";
+    bool autoresign{ false };
 
-    if (!fs::exists("EBOOT.BIN") && !fs::exists("EBOOT.ELF")) {
+    if (not fs::exists("EBOOT.BIN") && !fs::exists("EBOOT.ELF")) {
         std::cout << "[^^!] EBOOT.BIN/ELF cannot be found." << std::endl;
         std::cout << "[^^!] Resign aborted." << std::endl;
         std::cout << "[*] Press any key to continue..." << std::endl;
@@ -1151,13 +1237,13 @@ void npdrmdex() {
         return;
     }
 
-    if (!fs::exists("EBOOT.ELF")) {
+    if (not fs::exists("EBOOT.ELF")) {
         std::cout << "[*] Decrypting EBOOT.BIN..." << std::endl;
         std::system("./tool/scetool --decrypt EBOOT.BIN EBOOT.ELF");
-        autoresign = "TRUE";
+        autoresign = true;
     }
 
-    if (!fs::exists("EBOOT.ELF")) {
+    if (not fs::exists("EBOOT.ELF")) {
         std::cout << "[^^!] Decrypt EBOOT.BIN failed." << std::endl;
         std::cout << "[^^!] Resign aborted." << std::endl;
         std::cout << "[*] Press any key to continue..." << std::endl;
@@ -1178,7 +1264,7 @@ void npdrmdex() {
     std::cout << "[*] Encrypting EBOOT.ELF..." << std::endl;
     std::system("./tool/make_fself_npdrm EBOOT.ELF EBOOT.BIN");
 
-    if (autoresign == "TRUE") {
+    if (autoresign) {
         fs::remove("EBOOT.ELF");
     }
 
@@ -1187,6 +1273,9 @@ void npdrmdex() {
     wait_input();
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void outputoption() {
     if(output=="4xxstd") {
         output="4xxalt";
@@ -1246,11 +1335,17 @@ void outputoption() {
     }
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void compressoption() {
     if(compress=="FALSE") enablecompressoption();
     if(compress=="TRUE") disablecompressoption();
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void enablecompressoption() {
     std::string compressdata{ "NONE" };
     std::printf("Enter Y to enable Compress Data / any other key to abort:");
@@ -1260,11 +1355,17 @@ void enablecompressoption() {
     if(compressdata=="y") enablecompress();
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void enablecompress() {
     compress="TRUE";
     compressmsg="[ON]";         
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void disablecompressoption() {
     std::string compressdata{ "NONE" };
     std::printf("Enter Y to disable Compress Data / any other key to abort:");
@@ -1274,6 +1375,9 @@ void disablecompressoption() {
     if(compressdata=="y") disablecompress();
 }
 
+//----------------------------------------
+//
+//----------------------------------------
 void disablecompress() {
     compress="FALSE";
     compressmsg="[OFF]";        
