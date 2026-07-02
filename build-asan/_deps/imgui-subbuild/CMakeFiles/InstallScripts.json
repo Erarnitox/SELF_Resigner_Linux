@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/imgui-subbuild/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
