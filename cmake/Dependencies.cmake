@@ -4,22 +4,26 @@ CPMAddPackage(
     NAME fmt
     GITHUB_REPOSITORY fmtlib/fmt
     GIT_TAG 10.2.1
+    OPTIONS "FMT_INSTALL OFF"
 )
 
 CPMAddPackage(
     NAME nlohmann_json
     GITHUB_REPOSITORY nlohmann/json
     GIT_TAG v3.11.3
+    OPTIONS "JSON_Install OFF"
 )
 
-CPMAddPackage(
-    NAME Catch2
-    GITHUB_REPOSITORY catchorg/Catch2
-    GIT_TAG v3.5.4
-    OPTIONS
-        "CATCH_INSTALL_DOCS OFF"
-        "CATCH_INSTALL_EXTRAS OFF"
-)
+if(BUILD_TESTING)
+    CPMAddPackage(
+        NAME Catch2
+        GITHUB_REPOSITORY catchorg/Catch2
+        GIT_TAG v3.5.4
+        OPTIONS
+            "CATCH_INSTALL_DOCS OFF"
+            "CATCH_INSTALL_EXTRAS OFF"
+    )
+endif()
 
 CPMAddPackage(
     NAME capstone
@@ -30,18 +34,28 @@ CPMAddPackage(
         "CAPSTONE_BUILD_TESTS OFF"
         "CAPSTONE_BUILD_CSTOOL OFF"
         "CAPSTONE_BUILD_DIET OFF"
+        "CAPSTONE_INSTALL OFF"
 )
 
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
-    pkg_check_modules(KEYSTONE IMPORTED_TARGET keystone)
+    pkg_check_modules(KEYSTONE QUIET IMPORTED_TARGET keystone)
 endif()
 
-if(NOT TARGET PkgConfig::KEYSTONE)
-    message(FATAL_ERROR "Keystone is required. Install libkeystone-dev (pkg-config keystone).")
+if(TARGET PkgConfig::KEYSTONE)
+    add_library(keystone ALIAS PkgConfig::KEYSTONE)
+elseif(TARGET keystone::keystone)
+    add_library(keystone ALIAS keystone::keystone)
+else()
+    find_package(keystone CONFIG QUIET)
+    if(TARGET keystone::keystone)
+        add_library(keystone ALIAS keystone::keystone)
+    else()
+        message(FATAL_ERROR
+            "Keystone is required. Install libkeystone-dev (Linux) or use vcpkg (Windows)."
+        )
+    endif()
 endif()
-
-add_library(keystone ALIAS PkgConfig::KEYSTONE)
 
 CPMAddPackage(
     NAME glfw

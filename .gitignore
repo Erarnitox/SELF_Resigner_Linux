@@ -1,6 +1,8 @@
 bin
 build
 build*
+tests
+test*
 release
 debug
 .cache

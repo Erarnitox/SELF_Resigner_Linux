@@ -2,7 +2,10 @@
 
 #include <cstdlib>
 #include <filesystem>
-#include <fstream>
+
+#if defined(_WIN32)
+#include <windows.h>
+#endif
 
 namespace eboot_diff {
 
@@ -18,8 +21,14 @@ std::filesystem::path home_directory() {
 } // namespace
 
 std::optional<std::filesystem::path> AppPaths::executable_directory() {
+#if defined(_WIN32)
+    wchar_t buffer[MAX_PATH]{};
+    const DWORD length = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+    if (length > 0 && length < MAX_PATH) {
+        return std::filesystem::path{buffer}.parent_path();
+    }
+#elif defined(__linux__)
     std::error_code error;
-#if defined(__linux__)
     const auto executable = std::filesystem::read_symlink("/proc/self/exe", error);
     if (!error) {
         return executable.parent_path();

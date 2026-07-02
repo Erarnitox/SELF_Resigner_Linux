@@ -1,12 +1,16 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(ps3_tools LANGUAGES C CXX)
+project(ps3_tools VERSION 0.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-include(CTest)
+option(BUILD_TESTING "Build unit tests" ON)
+
+if(BUILD_TESTING)
+    include(CTest)
+endif()
 
 add_library(aes OBJECT src/tool/scetool_source/aes.c)
 add_library(aes_omac OBJECT src/tool/scetool_source/aes_omac.cpp)
@@ -143,26 +147,30 @@ target_link_libraries(eboot_diff PRIVATE eboot_diff_lib)
 set_target_properties(eboot_diff PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 add_dependencies(eboot_diff resigner_data)
 
-add_executable(eboot_diff_tests
-    tests/eboot_diff/diff_engine_test.cpp
-    tests/eboot_diff/address_index_test.cpp
-    tests/eboot_diff/disasm_real_test.cpp
-    tests/eboot_diff/elf_image_test.cpp
-    tests/eboot_diff/disasm_test.cpp
-    tests/eboot_diff/asm_roundtrip_test.cpp
-    tests/eboot_diff/patch_service_test.cpp
-    tests/eboot_diff/project_service_test.cpp
-)
-target_link_libraries(eboot_diff_tests PRIVATE eboot_diff_lib Catch2::Catch2WithMain)
-target_include_directories(eboot_diff_tests PRIVATE ${CMAKE_SOURCE_DIR}/tests/eboot_diff)
-set_target_properties(eboot_diff_tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+if(BUILD_TESTING)
+    add_executable(eboot_diff_tests
+        tests/eboot_diff/diff_engine_test.cpp
+        tests/eboot_diff/address_index_test.cpp
+        tests/eboot_diff/disasm_real_test.cpp
+        tests/eboot_diff/elf_image_test.cpp
+        tests/eboot_diff/disasm_test.cpp
+        tests/eboot_diff/asm_roundtrip_test.cpp
+        tests/eboot_diff/patch_service_test.cpp
+        tests/eboot_diff/project_service_test.cpp
+    )
+    target_link_libraries(eboot_diff_tests PRIVATE eboot_diff_lib Catch2::Catch2WithMain)
+    target_include_directories(eboot_diff_tests PRIVATE ${CMAKE_SOURCE_DIR}/tests/eboot_diff)
+    set_target_properties(eboot_diff_tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-include(${Catch2_SOURCE_DIR}/extras/Catch.cmake)
-catch_discover_tests(eboot_diff_tests)
+    include(${Catch2_SOURCE_DIR}/extras/Catch.cmake)
+    catch_discover_tests(eboot_diff_tests)
 
-add_executable(eboot_profile tests/eboot_diff/profile_load.cpp)
-target_link_libraries(eboot_profile PRIVATE eboot_diff_lib)
-target_include_directories(eboot_profile PRIVATE ${CMAKE_SOURCE_DIR}/tests/eboot_diff)
-set_target_properties(eboot_profile PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-add_dependencies(eboot_profile resigner_data)
+    add_executable(eboot_profile tests/eboot_diff/profile_load.cpp)
+    target_link_libraries(eboot_profile PRIVATE eboot_diff_lib)
+    target_include_directories(eboot_profile PRIVATE ${CMAKE_SOURCE_DIR}/tests/eboot_diff)
+    set_target_properties(eboot_profile PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_dependencies(eboot_profile resigner_data)
+endif()
 
+include(${CMAKE_SOURCE_DIR}/cmake/Install.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/CPack.cmake)

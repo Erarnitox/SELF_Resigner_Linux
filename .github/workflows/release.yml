@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ zlib1g-dev libgl-dev libkeystone-dev pkg-config
+
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/build/package-root" \
+            -DBUILD_TESTING=OFF \
+            -DCPACK_PACKAGE_VERSION="${{ github.ref_name }}"
+
+      - name: Build, install, and package
+        run: |
+          cmake --build build
+          cmake --install build
+          cmake --build build --target package
+
+      - name: Upload Linux package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps3_tools-${{ github.ref_name }}-linux-x86_64
+          path: build/ps3_tools-${{ github.ref_name }}-linux-x86_64.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git "${{ runner.temp }}\vcpkg"
+          "${{ runner.temp }}\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
+
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="${{ runner.temp }}\vcpkg\scripts\buildsystems\vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
+            -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/build/package-root" `
+            -DBUILD_TESTING=OFF `
+            -DCPACK_PACKAGE_VERSION="${{ github.ref_name }}"
+        shell: pwsh
+
+      - name: Build, install, and package
+        run: |
+          cmake --build build
+          cmake --install build
+          cmake --build build --target package
+        shell: pwsh
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps3_tools-${{ github.ref_name }}-windows-x86_64
+          path: build/ps3_tools-${{ github.ref_name }}-windows-x86_64.zip
+
+  release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          path: packages
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            ## Downloads
+
+            Extract the ZIP for your platform and run the tools from inside the extracted folder.
+
+            | Platform | Package |
+            |----------|---------|
+            | Linux x86_64 | `ps3_tools-${{ github.ref_name }}-linux-x86_64.zip` |
+            | Windows x86_64 | `ps3_tools-${{ github.ref_name }}-windows-x86_64.zip` |
+
+            ## Included tools
+
+            - **eboot_diff** — GUI tool to compare and patch EBOOT.BIN / EBOOT.ELF files
+            - **resigner** — CLI tool to resign PS3 SELF/SPRX files
+
+            See [README.MD](https://github.com/${{ github.repository }}/blob/master/README.MD) for installation and usage.
+          files: |
+            packages/ps3_tools-${{ github.ref_name }}-linux-x86_64/ps3_tools-${{ github.ref_name }}-linux-x86_64.zip
+            packages/ps3_tools-${{ github.ref_name }}-windows-x86_64/ps3_tools-${{ github.ref_name }}-windows-x86_64.zip
