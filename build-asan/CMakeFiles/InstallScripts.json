@@ -1,0 +1,14 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/cmake_install.cmake",
+		"/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/fmt-build/cmake_install.cmake",
+		"/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/nlohmann_json-build/cmake_install.cmake",
+		"/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/catch2-build/cmake_install.cmake",
+		"/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/catch2-build/src/cmake_install.cmake",
+		"/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/capstone-build/cmake_install.cmake",
+		"/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/glfw-build/cmake_install.cmake",
+		"/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/glfw-build/src/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

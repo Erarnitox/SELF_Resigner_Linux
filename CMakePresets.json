@@ -8,30 +8,43 @@
     "configurePresets" : [
       {
         "name" : "debug",
-        "displayName" : "Debug - (Linux) Ninja and GCC",
-        "description" : "Erarnitox's recommended settings for a debug build. Uses clang and Ninja",
+        "displayName" : "Debug - (Linux) Ninja and Clang",
+        "description" : "Debug build using Ninja and Clang",
         "generator" : "Ninja",
         "binaryDir" : "${sourceDir}/debug",
         "cacheVariables" : {
             "CMAKE_EXPORT_COMPILE_COMMANDS" : true,
             "CMAKE_BUILD_TYPE" : "Debug",
             "CMAKE_INSTALL_PREFIX" : "${sourceDir}/debug",
-            "CMAKE_CXX_COMPILER": "g++",
+            "CMAKE_C_COMPILER": "clang",
+            "CMAKE_CXX_COMPILER": "clang++",
             "CMAKE_CXX_STANDARD": "23"
         }
       },
       {
         "name" : "release",
-        "displayName" : "Release - (Linux) Ninja and GCC",
-        "description" : "Erarnitox's recommended settings for a release build. Uses clang and Ninja",
+        "displayName" : "Release - (Linux) Ninja and Clang",
+        "description" : "Release build using Ninja and Clang",
         "generator" : "Ninja",
         "binaryDir" : "${sourceDir}/release",
         "cacheVariables" : {
             "CMAKE_EXPORT_COMPILE_COMMANDS" : false,
             "CMAKE_BUILD_TYPE" : "Release",
             "CMAKE_INSTALL_PREFIX" : "${sourceDir}/release",
-            "CMAKE_CXX_COMPILER": "g++",
+            "CMAKE_C_COMPILER": "clang",
+            "CMAKE_CXX_COMPILER": "clang++",
             "CMAKE_CXX_STANDARD": "23"
+        }
+      },
+      {
+        "name" : "debug-asan",
+        "displayName" : "Debug ASan - (Linux) Ninja and Clang",
+        "inherits" : "debug",
+        "cacheVariables" : {
+            "CMAKE_CXX_FLAGS" : "-fsanitize=address,undefined -fno-omit-frame-pointer",
+            "CMAKE_C_FLAGS" : "-fsanitize=address,undefined -fno-omit-frame-pointer",
+            "CMAKE_EXE_LINKER_FLAGS" : "-fsanitize=address,undefined",
+            "CMAKE_SHARED_LINKER_FLAGS" : "-fsanitize=address,undefined"
         }
       }
     ]

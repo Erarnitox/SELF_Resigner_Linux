@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/capstone-subbuild/CMakeFiles/capstone-populate"
+		},
+		{
+			"file" : "/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/capstone-subbuild/CMakeFiles/capstone-populate.rule"
+		},
+		{
+			"file" : "/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/capstone-subbuild/CMakeFiles/capstone-populate-complete.rule"
+		},
+		{
+			"file" : "/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/capstone-subbuild/capstone-populate-prefix/src/capstone-populate-stamp/capstone-populate-build.rule"
+		},
+		{
+			"file" : "/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/capstone-subbuild/capstone-populate-prefix/src/capstone-populate-stamp/capstone-populate-configure.rule"
+		},
+		{
+			"file" : "/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/capstone-subbuild/capstone-populate-prefix/src/capstone-populate-stamp/capstone-populate-download.rule"
+		},
+		{
+			"file" : "/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/capstone-subbuild/capstone-populate-prefix/src/capstone-populate-stamp/capstone-populate-install.rule"
+		},
+		{
+			"file" : "/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/capstone-subbuild/capstone-populate-prefix/src/capstone-populate-stamp/capstone-populate-mkdir.rule"
+		},
+		{
+			"file" : "/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/capstone-subbuild/capstone-populate-prefix/src/capstone-populate-stamp/capstone-populate-patch.rule"
+		},
+		{
+			"file" : "/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/capstone-subbuild/capstone-populate-prefix/src/capstone-populate-stamp/capstone-populate-test.rule"
+		},
+		{
+			"file" : "/home/me/Projects/CPP/SELF_Resigner_Linux/build-asan/_deps/capstone-subbuild/capstone-populate-prefix/src/capstone-populate-stamp/capstone-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"capstone-populate"
+		],
+		"name" : "capstone-populate"
+	}
+}

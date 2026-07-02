@@ -7,11 +7,11 @@
 #define _CONFIG_H_
 
 /*! scetool base version. */
-#define SCETOOL_VERSION_BASE "0.2.9"
+#define SCETOOL_VERSION_BASE "1.0.0"
 
 /*! Private build. */
 //#define CONFIG_PRIVATE_BUILD
-#define BUILD_FOR "naehrwert"
+#define BUILD_FOR "erarnitox"
 //#define BUILD_FOR "unicorns"
 
 /*! scetool version. */
@@ -43,7 +43,7 @@
 
 /*! NPDRM watermark text (16 bytes exactly). */
 //"I like kittens !"
-#define CONFIG_NPDRM_WATERMARK "watermarktrololo"
+#define CONFIG_NPDRM_WATERMARK "erarnitoxwashere"
 
 /*! Environment variables. */
 #define CONFIG_ENV_PS3 "PS3"

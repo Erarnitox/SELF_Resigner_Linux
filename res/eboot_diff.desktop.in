@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Erarnitox's Awesome EBOOT Patcher
+Comment=Compare and patch PS3 EBOOT binaries
+Exec=eboot_diff
+Icon=@EBOOT_DIFF_ICON_PATH@
+Categories=Development;Utility;
+Terminal=false

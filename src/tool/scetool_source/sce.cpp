@@ -21,7 +21,7 @@
 #include "ecdsa.h"
 #include "tables.h"
 #include "config.h"
-#include "zlib.h"
+#include <zlib.h>
 #include "np.h"
 
 void _print_sce_header(FILE *fp, sce_header_t *h)
