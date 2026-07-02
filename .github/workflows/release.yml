@@ -4,15 +4,44 @@ on:
   push:
     tags:
       - '*'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG=$(git tag --sort=-v:refname | head -n1)
+            if [ -z "$TAG" ]; then
+              echo "No tags found in repository." >&2
+              exit 1
+            fi
+            echo "Manual run: using latest tag '$TAG'"
+          else
+            TAG="${{ github.ref_name }}"
+            echo "Tag push: using '$TAG'"
+          fi
+          echo "release_tag=$TAG" >> "$GITHUB_OUTPUT"
+
   build-linux:
+    needs: resolve-version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-version.outputs.release_tag }}
 
       - name: Install dependencies
         run: |
@@ -33,7 +62,7 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x64-linux \
             -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/build/package-root" \
             -DBUILD_TESTING=OFF \
-            -DCPACK_PACKAGE_VERSION="${{ github.ref_name }}"
+            -DCPACK_PACKAGE_VERSION="${{ needs.resolve-version.outputs.release_tag }}"
 
       - name: Build, install, and package
         run: |
@@ -44,13 +73,16 @@ jobs:
       - name: Upload Linux package
         uses: actions/upload-artifact@v4
         with:
-          name: ps3_tools-${{ github.ref_name }}-linux-x86_64
-          path: build/ps3_tools-${{ github.ref_name }}-linux-x86_64.zip
+          name: ps3_tools-${{ needs.resolve-version.outputs.release_tag }}-linux-x86_64
+          path: build/ps3_tools-${{ needs.resolve-version.outputs.release_tag }}-linux-x86_64.zip
 
   build-windows:
+    needs: resolve-version
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-version.outputs.release_tag }}
 
       - name: Setup vcpkg
         shell: pwsh
@@ -67,7 +99,7 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/build/package-root" `
             -DBUILD_TESTING=OFF `
-            -DCPACK_PACKAGE_VERSION="${{ github.ref_name }}"
+            -DCPACK_PACKAGE_VERSION="${{ needs.resolve-version.outputs.release_tag }}"
 
       - name: Build, install, and package
         shell: pwsh
@@ -79,11 +111,11 @@ jobs:
       - name: Upload Windows package
         uses: actions/upload-artifact@v4
         with:
-          name: ps3_tools-${{ github.ref_name }}-windows-x86_64
-          path: build/ps3_tools-${{ github.ref_name }}-windows-x86_64.zip
+          name: ps3_tools-${{ needs.resolve-version.outputs.release_tag }}-windows-x86_64
+          path: build/ps3_tools-${{ needs.resolve-version.outputs.release_tag }}-windows-x86_64.zip
 
   release:
-    needs: [build-linux, build-windows]
+    needs: [resolve-version, build-linux, build-windows]
     runs-on: ubuntu-latest
     steps:
       - name: Download packages
@@ -94,8 +126,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
+          name: ${{ needs.resolve-version.outputs.release_tag }}
+          tag_name: ${{ needs.resolve-version.outputs.release_tag }}
           generate_release_notes: true
           body: |
             ## Downloads
@@ -104,8 +136,8 @@ jobs:
 
             | Platform | Package |
             |----------|---------|
-            | Linux x86_64 | `ps3_tools-${{ github.ref_name }}-linux-x86_64.zip` |
-            | Windows x86_64 | `ps3_tools-${{ github.ref_name }}-windows-x86_64.zip` |
+            | Linux x86_64 | `ps3_tools-${{ needs.resolve-version.outputs.release_tag }}-linux-x86_64.zip` |
+            | Windows x86_64 | `ps3_tools-${{ needs.resolve-version.outputs.release_tag }}-windows-x86_64.zip` |
 
             ## Included tools
 
@@ -114,5 +146,5 @@ jobs:
 
             See [README.MD](https://github.com/${{ github.repository }}/blob/master/README.MD) for installation and usage.
           files: |
-            packages/ps3_tools-${{ github.ref_name }}-linux-x86_64/ps3_tools-${{ github.ref_name }}-linux-x86_64.zip
-            packages/ps3_tools-${{ github.ref_name }}-windows-x86_64/ps3_tools-${{ github.ref_name }}-windows-x86_64.zip
+            packages/ps3_tools-${{ needs.resolve-version.outputs.release_tag }}-linux-x86_64/ps3_tools-${{ needs.resolve-version.outputs.release_tag }}-linux-x86_64.zip
+            packages/ps3_tools-${{ needs.resolve-version.outputs.release_tag }}-windows-x86_64/ps3_tools-${{ needs.resolve-version.outputs.release_tag }}-windows-x86_64.zip
