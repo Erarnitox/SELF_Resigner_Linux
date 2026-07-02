@@ -1,10 +1,18 @@
 #include "scetool.hpp"
 
 #include <cstdio>
+#include <filesystem>
 #include <format>
 #include <fstream>
 #include <sstream>
 #include <string_view>
+
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 #include "keys.h"
 
@@ -17,6 +25,58 @@ namespace {
 std::string bool_arg(bool value) {
     return value ? "TRUE" : "FALSE";
 }
+
+class StdoutRedirect {
+public:
+    bool redirect(const std::filesystem::path& path) {
+#ifdef _WIN32
+        saved_fd_ = _dup(_fileno(stdout));
+#else
+        saved_fd_ = dup(STDOUT_FILENO);
+#endif
+        if (saved_fd_ < 0) {
+            return false;
+        }
+
+        if (std::freopen(path.string().c_str(), "w", stdout) == nullptr) {
+#ifdef _WIN32
+            _close(saved_fd_);
+#else
+            close(saved_fd_);
+#endif
+            saved_fd_ = -1;
+            return false;
+        }
+
+        active_ = true;
+        return true;
+    }
+
+    void restore() {
+        if (!active_ || saved_fd_ < 0) {
+            return;
+        }
+
+        std::fflush(stdout);
+#ifdef _WIN32
+        _dup2(saved_fd_, _fileno(stdout));
+        _close(saved_fd_);
+#else
+        dup2(saved_fd_, STDOUT_FILENO);
+        close(saved_fd_);
+#endif
+        saved_fd_ = -1;
+        active_ = false;
+    }
+
+    ~StdoutRedirect() {
+        restore();
+    }
+
+private:
+    int saved_fd_{-1};
+    bool active_{false};
+};
 
 std::vector<std::string> to_argv(const SelfEncryptParams& params) {
     std::vector<std::string> args;
@@ -108,17 +168,13 @@ Result Scetool::print_info(
         std::filesystem::create_directories(parent);
     }
 
-    std::FILE* const file = std::fopen(redirect_to->c_str(), "w");
-    if (file == nullptr) {
+    StdoutRedirect redirect;
+    if (!redirect.redirect(*redirect_to)) {
         return Result{.success = false, .exit_code = -1};
     }
 
-    std::FILE* const saved_stdout = stdout;
-    stdout = file;
     const Result result = run({"-i", input.string()});
-    std::fflush(file);
-    std::fclose(file);
-    stdout = saved_stdout;
+    redirect.restore();
     return result;
 }
 

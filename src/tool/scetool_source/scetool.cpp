@@ -519,13 +519,13 @@ int scetool_engine_main(const std::vector<std::string>& args)
 	else if(_decrypt_file)
 	{
 		frontend_decrypt(_file_in, _file_out);
-		if(_file_out == NULL || access(_file_out, F_OK) != 0)
+		if(_file_out == NULL || access(_file_out, 0) != 0)
 			return 1;
 	}
 	else if(_encrypt_file)
 	{
 		frontend_encrypt(_file_in, _file_out);
-		if(_file_out == NULL || access(_file_out, F_OK) != 0)
+		if(_file_out == NULL || access(_file_out, 0) != 0)
 			return 1;
 	}
 
