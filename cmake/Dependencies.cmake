@@ -73,6 +73,9 @@ if(NOT TARGET imgui_lib)
     )
     target_link_libraries(imgui_lib PUBLIC glfw)
     target_compile_definitions(imgui_lib PUBLIC GLFW_INCLUDE_NONE)
+    if(MSVC)
+        target_compile_options(imgui_lib PRIVATE "/FIwindows.h")
+    endif()
 endif()
 
 CPMAddPackage(
