@@ -51,9 +51,19 @@ else()
     if(TARGET keystone::keystone)
         add_library(keystone ALIAS keystone::keystone)
     else()
-        message(FATAL_ERROR
-            "Keystone is required. Install libkeystone-dev (Linux) or use vcpkg (Windows)."
-        )
+        find_path(KEYSTONE_INCLUDE_DIR NAMES keystone/keystone.h)
+        find_library(KEYSTONE_LIBRARY NAMES keystone)
+        if(KEYSTONE_INCLUDE_DIR AND KEYSTONE_LIBRARY)
+            add_library(keystone UNKNOWN IMPORTED)
+            set_target_properties(keystone PROPERTIES
+                IMPORTED_LOCATION "${KEYSTONE_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${KEYSTONE_INCLUDE_DIR}"
+            )
+        else()
+            message(FATAL_ERROR
+                "Keystone is required. Install libkeystone-dev (Linux) or use vcpkg (Windows)."
+            )
+        endif()
     endif()
 endif()
 
@@ -66,6 +76,7 @@ CPMAddPackage(
         "GLFW_BUILD_TESTS OFF"
         "GLFW_BUILD_DOCS OFF"
         "GLFW_INSTALL OFF"
+        "GLFW_BUILD_WAYLAND OFF"
 )
 
 CPMAddPackage(
