@@ -12,6 +12,9 @@ if(BUILD_TESTING)
     include(CTest)
 endif()
 
+find_package(ZLIB REQUIRED)
+find_package(OpenGL REQUIRED)
+
 add_library(aes OBJECT src/tool/scetool_source/aes.c)
 add_library(aes_omac OBJECT src/tool/scetool_source/aes_omac.cpp)
 add_library(bn OBJECT src/tool/scetool_source/bn.cpp)
@@ -24,15 +27,14 @@ add_library(mt19937 OBJECT src/tool/scetool_source/mt19937.cpp)
 add_library(np OBJECT src/tool/scetool_source/np.cpp)
 add_library(rvk OBJECT src/tool/scetool_source/rvk.cpp)
 add_library(sce OBJECT src/tool/scetool_source/sce.cpp)
+target_link_libraries(sce PRIVATE ZLIB::ZLIB)
 add_library(self OBJECT src/tool/scetool_source/self.cpp)
 add_library(sha1 OBJECT src/tool/scetool_source/sha1.c)
 add_library(tables OBJECT src/tool/scetool_source/tables.cpp)
 add_library(util OBJECT src/tool/scetool_source/util.cpp)
+target_link_libraries(util PRIVATE ZLIB::ZLIB)
 add_library(spp OBJECT src/tool/scetool_source/spp.cpp)
 add_library(frontend OBJECT src/tool/scetool_source/frontend.cpp)
-
-find_package(ZLIB REQUIRED)
-find_package(OpenGL REQUIRED)
 
 add_library(ps3 STATIC
     src/ps3/elf/patcher.cpp
