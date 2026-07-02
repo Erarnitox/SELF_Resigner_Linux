@@ -37,62 +37,7 @@ CPMAddPackage(
         "CAPSTONE_INSTALL OFF"
 )
 
-if(DEFINED VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
-    set(_vcpkg_triplet_root "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
-    if(EXISTS "${_vcpkg_triplet_root}/lib/pkgconfig")
-        if(WIN32)
-            set(ENV{PKG_CONFIG_PATH} "${_vcpkg_triplet_root}/lib/pkgconfig;$ENV{PKG_CONFIG_PATH}")
-        else()
-            set(ENV{PKG_CONFIG_PATH} "${_vcpkg_triplet_root}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
-        endif()
-    endif()
-endif()
-
-find_package(PkgConfig QUIET)
-if(PkgConfig_FOUND)
-    pkg_check_modules(KEYSTONE QUIET IMPORTED_TARGET keystone)
-endif()
-
-if(TARGET PkgConfig::KEYSTONE)
-    add_library(keystone ALIAS PkgConfig::KEYSTONE)
-elseif(TARGET keystone::keystone)
-    add_library(keystone ALIAS keystone::keystone)
-else()
-    find_package(keystone CONFIG QUIET)
-    if(TARGET keystone::keystone)
-        add_library(keystone ALIAS keystone::keystone)
-    else()
-        set(_keystone_include_hints)
-        set(_keystone_library_hints)
-        if(DEFINED _vcpkg_triplet_root)
-            list(APPEND _keystone_include_hints "${_vcpkg_triplet_root}/include")
-            list(APPEND _keystone_library_hints
-                "${_vcpkg_triplet_root}/lib"
-                "${_vcpkg_triplet_root}/debug/lib"
-            )
-        endif()
-
-        find_path(KEYSTONE_INCLUDE_DIR NAMES keystone/keystone.h
-            HINTS ${_keystone_include_hints}
-        )
-        find_library(KEYSTONE_LIBRARY NAMES keystone libkeystone
-            HINTS ${_keystone_library_hints}
-        )
-        if(KEYSTONE_INCLUDE_DIR AND KEYSTONE_LIBRARY)
-            add_library(keystone UNKNOWN IMPORTED)
-            set_target_properties(keystone PROPERTIES
-                IMPORTED_LOCATION "${KEYSTONE_LIBRARY}"
-                INTERFACE_INCLUDE_DIRECTORIES "${KEYSTONE_INCLUDE_DIR}"
-            )
-        else()
-            message(FATAL_ERROR
-                "Keystone is required. Install libkeystone-dev (Linux) or use vcpkg (Windows).\n"
-                "  KEYSTONE_INCLUDE_DIR=${KEYSTONE_INCLUDE_DIR}\n"
-                "  KEYSTONE_LIBRARY=${KEYSTONE_LIBRARY}"
-            )
-        endif()
-    endif()
-endif()
+include(${CMAKE_SOURCE_DIR}/cmake/Keystone.cmake)
 
 CPMAddPackage(
     NAME glfw

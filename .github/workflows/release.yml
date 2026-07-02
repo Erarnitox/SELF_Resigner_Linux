@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_tag: ${{ steps.resolve.outputs.release_tag }}
+      source_ref: ${{ steps.resolve.outputs.source_ref }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,12 +29,15 @@ jobs:
               echo "No tags found in repository." >&2
               exit 1
             fi
-            echo "Manual run: using latest tag '$TAG'"
+            SOURCE_REF="${{ github.ref_name }}"
+            echo "Manual run: building '${SOURCE_REF}', packaging as tag '${TAG}'"
           else
             TAG="${{ github.ref_name }}"
-            echo "Tag push: using '$TAG'"
+            SOURCE_REF="${{ github.ref_name }}"
+            echo "Tag push: building and packaging as '${TAG}'"
           fi
           echo "release_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "source_ref=$SOURCE_REF" >> "$GITHUB_OUTPUT"
 
   build-linux:
     needs: resolve-version
@@ -41,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.resolve-version.outputs.release_tag }}
+          ref: ${{ needs.resolve-version.outputs.source_ref }}
 
       - name: Install dependencies
         run: |
@@ -83,7 +87,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.resolve-version.outputs.release_tag }}
+          ref: ${{ needs.resolve-version.outputs.source_ref }}
 
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1

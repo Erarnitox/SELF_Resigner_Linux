@@ -2,8 +2,10 @@
 
 #include "domain/types.hpp"
 
+#include <cstdint>
 #include <filesystem>
 #include <optional>
+#include <span>
 
 namespace resigner {
 class SceOperations;
