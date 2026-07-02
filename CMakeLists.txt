@@ -103,6 +103,9 @@ set_target_properties(resigner scetool ps3 resigner_core resigner_lib
 set_target_properties(resigner PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 # --- eboot_diff ---
+if(UNIX AND NOT APPLE)
+    set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Use X11 only; avoids wayland-scanner in CI" FORCE)
+endif()
 include(${CMAKE_SOURCE_DIR}/cmake/Dependencies.cmake)
 
 add_library(eboot_diff_lib STATIC
